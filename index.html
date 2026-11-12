@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14284B">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Estaciónate">
+<meta name="description" content="Encuentra, reserva y paga estacionamiento seguro en Lima.">
+<title>Estaciónate</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%2314284B'/%3E%3Cpath d='M7 5h10M7 12h7M7 19h10M7 5v14' stroke='white' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' fill='%2314284B'/%3E%3Cpath d='M7 5h10M7 12h7M7 19h10M7 5v14' stroke='white' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{
+  --navy:#14284B; --navy-2:#1F3B68; --navy-soft:#E8EDF5;
+  --ink:#0F172A; --muted:#64748B; --muted-2:#94A3B8; --line:#E6E9EF;
+  --bg:#F5F6F8; --card:#FFFFFF;
+  --green:#16A34A; --green-soft:#E7F6EC;
+  --amber:#D97706; --amber-soft:#FEF3E2;
+  --red:#E11D48; --red-soft:#FDE8EE;
+  --radius:16px; --shadow:0 1px 2px rgba(15,23,42,.06),0 4px 16px rgba(15,23,42,.08);
+  --st:env(safe-area-inset-top,0px); --sb:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overscroll-behavior:none}
+body{font-family:"Plus Jakarta Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input,select,textarea{font:inherit;color:inherit;font-size:16px}
+a{color:inherit}
+svg{display:block;flex:none}
+
+#app{position:relative;width:100%;max-width:520px;height:100vh;height:100dvh;margin:0 auto;background:var(--bg);overflow:hidden;display:flex;flex-direction:column}
+@media (min-width:521px){ body{background:#E3E7ED} #app{box-shadow:0 0 0 1px var(--line),0 10px 40px rgba(15,23,42,.08)} }
+
+/* Marca */
+.logo{width:36px;height:36px;border-radius:10px;background:var(--navy);display:grid;place-items:center;flex:none;color:#fff}
+.logo.lg{width:68px;height:68px;border-radius:20px}
+
+/* Vistas */
+.views{flex:1;position:relative;overflow:hidden}
+.view{position:absolute;inset:0;display:none;flex-direction:column;background:var(--bg)}
+.view.active{display:flex;animation:fade .2s ease}
+@keyframes fade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.scroll{flex:1;overflow-y:auto;padding:0 20px 28px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.scroll::-webkit-scrollbar{display:none}
+.topbar{display:flex;align-items:center;gap:12px;padding:calc(12px + var(--st)) 20px 14px;flex:none}
+.topbar h2{font-size:18px;font-weight:700;letter-spacing:-.01em;flex:1}
+.iconbtn{width:40px;height:40px;border-radius:12px;background:#fff;border:1px solid var(--line);display:grid;place-items:center;flex:none}
+.title{font-size:26px;font-weight:800;letter-spacing:-.02em;padding:calc(18px + var(--st)) 20px 2px}
+.subtitle{color:var(--muted);font-size:14px;padding:0 20px 16px}
+
+/* Barra inferior */
+.tabbar{flex:none;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:8px 8px calc(10px + var(--sb));z-index:30}
+.tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--muted-2);padding:4px 0}
+.tabbar button.on{color:var(--navy)}
+.tabbar.hidden{display:none}
+
+/* Componentes */
+.card{background:var(--card);border-radius:var(--radius);border:1px solid var(--line);padding:16px}
+.btn{height:52px;border-radius:14px;background:var(--navy);color:#fff;font-weight:700;font-size:15px;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .1s,opacity .2s;text-decoration:none}
+.btn:active{transform:scale(.98)}
+.btn.ghost{background:#fff;color:var(--navy);border:1px solid var(--line)}
+.btn.soft{background:var(--navy-soft);color:var(--navy)}
+.btn.danger{background:var(--red-soft);color:var(--red)}
+.btn.sm{height:42px;font-size:14px;border-radius:12px}
+.btn[disabled]{opacity:.4;pointer-events:none}
+.chip{height:34px;padding:0 14px;border-radius:999px;background:#fff;border:1px solid var(--line);font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;color:#334155;flex:none}
+.chip.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;white-space:nowrap}
+.badge.verified{background:var(--navy-soft);color:var(--navy)}
+.badge.green{background:var(--green-soft);color:var(--green)}
+.badge.amber{background:var(--amber-soft);color:var(--amber)}
+.badge.red{background:var(--red-soft);color:var(--red)}
+.badge.gray{background:var(--bg);color:var(--muted)}
+.row{display:flex;align-items:center;gap:12px}
+.between{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.muted{color:var(--muted)} .small{font-size:13px} .xs{font-size:12px} .bold{font-weight:700}
+.ellipsis{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sec-title{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin:22px 0 10px}
+.divider{height:1px;background:var(--line);margin:14px 0}
+.stack{display:grid;gap:12px}
+.avatar{width:44px;height:44px;border-radius:50%;background:var(--navy-soft);color:var(--navy);display:grid;place-items:center;font-weight:700;flex:none}
+.empty{text-align:center;padding:36px 20px;color:var(--muted);font-size:14px}
+
+/* Formularios */
+.field{display:grid;gap:6px;margin-bottom:14px}
+.field label{font-size:13px;font-weight:600;color:#334155}
+.field input,.field select{height:50px;border:1px solid var(--line);border-radius:12px;padding:0 14px;background:#fff;outline:none;width:100%}
+.field input:focus,.field select:focus,textarea:focus{border-color:var(--navy)}
+textarea{width:100%;border:1px solid var(--line);border-radius:12px;padding:12px;resize:none;height:84px;outline:none;background:#fff}
+input[type=range]{width:100%;accent-color:var(--navy)}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:1.5;cursor:pointer}
+.check input{width:20px;height:20px;accent-color:var(--navy);flex:none;margin-top:1px}
+
+/* Bienvenida */
+.welcome{flex:1;display:flex;flex-direction:column;padding:calc(36px + var(--st)) 24px calc(24px + var(--sb));background:#fff;overflow-y:auto}
+.welcome .hero{flex:1;display:flex;flex-direction:column;justify-content:center;gap:16px;min-height:280px}
+.welcome h1{font-size:34px;line-height:1.12;letter-spacing:-.03em}
+.welcome p{color:var(--muted);line-height:1.6}
+.role{display:flex;align-items:center;gap:14px;padding:16px;border:1px solid var(--line);border-radius:16px;text-align:left;width:100%;background:#fff}
+.role:active{background:#FAFBFD;border-color:var(--navy)}
+.role .ic{width:46px;height:46px;border-radius:12px;background:var(--navy-soft);color:var(--navy);display:grid;place-items:center;flex:none}
+.role b{display:block;font-size:15px}
+.role span{font-size:13px;color:var(--muted)}
+
+/* Mapa */
+#map{position:absolute;inset:0;background:#EEF1F5;z-index:1}
+.map-fallback{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:40px;color:var(--muted);font-size:14px}
+.map-top{position:absolute;top:calc(12px + var(--st));left:12px;right:12px;z-index:20;display:grid;gap:10px}
+.search{height:52px;background:#fff;border-radius:14px;box-shadow:var(--shadow);display:flex;align-items:center;gap:10px;padding:0 8px 0 14px}
+.search input{border:0;outline:0;flex:1;min-width:0;background:transparent}
+.search .x{width:32px;height:32px;display:none;place-items:center;color:var(--muted)}
+.search .x.show{display:grid}
+.results{background:#fff;border-radius:14px;box-shadow:var(--shadow);overflow:hidden;display:none;max-height:50vh;overflow-y:auto}
+.results.show{display:block}
+.results button{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;width:100%;text-align:left;border-top:1px solid var(--line)}
+.results button:first-child{border-top:0}
+.results .ic{color:var(--muted);margin-top:2px}
+.results .foot{font-size:10px;color:var(--muted-2);padding:6px 14px;border-top:1px solid var(--line)}
+.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.chips::-webkit-scrollbar{display:none}
+.map-top .chips .chip{box-shadow:0 1px 3px rgba(15,23,42,.1)}
+.ia-legend{background:#fff;border-radius:12px;box-shadow:var(--shadow);padding:10px 12px;font-size:12px;display:none}
+.ia-legend.show{display:block}
+.ia-legend .bar{height:6px;border-radius:3px;background:linear-gradient(90deg,#E11D48,#F59E0B,#16A34A);margin:6px 0 4px}
+.pill-float{position:absolute;left:50%;transform:translateX(-50%);z-index:15;background:#fff;box-shadow:var(--shadow);border-radius:999px;height:38px;padding:0 16px;font-size:13px;font-weight:700;display:none;align-items:center;gap:8px;color:var(--navy);white-space:nowrap}
+.pill-float.show{display:flex}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:12;background:#fff;border-radius:22px 22px 0 0;box-shadow:0 -6px 24px rgba(15,23,42,.08);padding:8px 0 14px;transition:transform .25s}
+.sheet.min{transform:translateY(calc(100% - 64px))}
+.sheet .grab{width:100%;padding:4px 0 8px;display:grid;place-items:center}
+.sheet .grab i{width:38px;height:4px;border-radius:2px;background:var(--line)}
+.sheet .head{padding:0 20px 10px}
+.hlist{display:flex;gap:12px;overflow-x:auto;padding:2px 20px 4px;scroll-snap-type:x mandatory;scrollbar-width:none}
+.hlist::-webkit-scrollbar{display:none}
+.spot-card{flex:none;width:236px;scroll-snap-align:start;border:1px solid var(--line);border-radius:14px;padding:12px;text-align:left;background:#fff}
+.spot-card .price{font-weight:800;font-size:16px}
+.spot-card .price small{font-weight:600;color:var(--muted);font-size:12px}
+.active-banner{margin:0 20px 10px;background:var(--navy);color:#fff;border-radius:14px;padding:12px 14px;display:none;align-items:center;gap:12px;width:calc(100% - 40px);text-align:left}
+.active-banner.show{display:flex}
+.fab{position:absolute;right:14px;z-index:13;display:grid;place-items:center;transition:bottom .25s}
+.fab-sos{width:56px;height:56px;border-radius:50%;background:var(--red);color:#fff;font-weight:800;font-size:13px;box-shadow:0 6px 18px rgba(225,29,72,.35);letter-spacing:.04em}
+.fab-loc{width:46px;height:46px;border-radius:14px;background:#fff;box-shadow:var(--shadow);color:var(--navy)}
+
+/* Marcadores */
+.pin{display:flex;flex-direction:column;align-items:center}
+.pin .p{background:#fff;color:var(--navy);font-weight:800;font-size:12px;padding:5px 9px;border-radius:999px;box-shadow:0 2px 8px rgba(15,23,42,.2);display:flex;align-items:center;gap:4px;white-space:nowrap;border:1.5px solid #fff}
+.pin .tip{width:8px;height:8px;transform:rotate(45deg);margin-top:-5px;background:#fff}
+.pin.host .p{background:var(--navy);color:#fff;border-color:var(--navy)}
+.pin.host .tip{background:var(--navy)}
+.pin.full .p{background:#fff;color:var(--muted-2);border-color:var(--line)}
+.pin.full .tip{background:#fff}
+.pin.osm .p{background:#fff;color:#1E40AF;border-color:#DBEAFE}
+.pin.osm .p b{background:#1E40AF;color:#fff;border-radius:4px;width:16px;height:16px;display:grid;place-items:center;font-size:11px}
+.me{width:18px;height:18px;border-radius:50%;background:#2563EB;border:3px solid #fff;box-shadow:0 0 0 8px rgba(37,99,235,.18)}
+.dest{width:30px;height:30px;border-radius:50% 50% 50% 0;background:var(--red);transform:rotate(-45deg);display:grid;place-items:center;box-shadow:0 3px 8px rgba(0,0,0,.25)}
+.dest i{width:10px;height:10px;border-radius:50%;background:#fff}
+.leaflet-container{font-family:inherit}
+.leaflet-control-attribution{font-size:9px!important;opacity:.75}
+
+/* Detalle */
+.cover{height:190px;background:linear-gradient(135deg,#1F3B68,#14284B);position:relative;flex:none;overflow:hidden}
+.cover.osm{background:linear-gradient(135deg,#334155,#1E293B)}
+.cover .back{position:absolute;top:calc(12px + var(--st));left:16px;z-index:2}
+.cover #miniMap{position:absolute;inset:0;opacity:.95}
+.feat{display:flex;flex-wrap:wrap;gap:8px}
+.feat span{font-size:12px;font-weight:600;padding:6px 10px;border-radius:10px;background:var(--bg);color:#334155;display:inline-flex;gap:6px;align-items:center}
+.stepper{display:flex;align-items:center;gap:14px}
+.stepper button{width:36px;height:36px;border-radius:10px;border:1px solid var(--line);background:#fff;font-size:18px;font-weight:700}
+.review{padding:12px 0;border-top:1px solid var(--line)}
+.review:first-child{border-top:0}
+.stars{color:#F59E0B;letter-spacing:1px;font-size:13px}
+.footer-cta{flex:none;background:#fff;border-top:1px solid var(--line);padding:12px 20px calc(14px + var(--sb));display:flex;align-items:center;gap:12px}
+.footer-cta .total{font-size:20px;font-weight:800}
+
+/* Pago */
+.pay{display:flex;align-items:center;gap:12px;padding:14px;border:1.5px solid var(--line);border-radius:14px;background:#fff;width:100%;text-align:left}
+.pay.on{border-color:var(--navy);background:#FAFBFD}
+.pay .radio{width:20px;height:20px;border-radius:50%;border:2px solid var(--line);margin-left:auto;flex:none}
+.pay.on .radio{border:6px solid var(--navy)}
+.pay .mark{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;font-weight:800;font-size:13px;color:#fff;flex:none}
+.contract{font-size:13px;color:#334155;line-height:1.6}
+.contract ol{padding-left:18px;display:grid;gap:6px;margin-top:8px}
+.line-item{display:flex;justify-content:space-between;gap:10px;font-size:14px;padding:5px 0}
+.line-item.total{font-weight:800;font-size:16px;border-top:1px dashed var(--line);margin-top:6px;padding-top:12px}
+
+/* Ticket */
+.ticket{background:#fff;border-radius:22px;border:1px solid var(--line);overflow:hidden}
+.ticket .top{background:var(--navy);color:#fff;padding:18px 20px}
+.ticket .qr{padding:22px;display:grid;place-items:center;gap:10px;border-bottom:2px dashed var(--line)}
+.ticket canvas{width:190px;height:190px;image-rendering:pixelated}
+.code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:700;letter-spacing:.12em;font-size:15px}
+.timer{font-size:30px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.kv{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:18px 20px}
+.kv span{display:block;font-size:12px;color:var(--muted)}
+.kv b{font-size:14px}
+
+/* Calificación */
+.bigstars{display:flex;gap:10px;justify-content:center;margin:12px 0}
+.bigstars button{font-size:40px;color:#E2E8F0;line-height:1}
+.bigstars button.on{color:#F59E0B}
+
+/* Recompensas */
+.points{background:var(--navy);color:#fff;border-radius:20px;padding:20px;position:relative;overflow:hidden}
+.points .num{font-size:36px;font-weight:800;letter-spacing:-.02em}
+.points .bar{height:6px;background:rgba(255,255,255,.18);border-radius:3px;margin:14px 0 6px;overflow:hidden}
+.points .bar i{display:block;height:100%;background:#fff;border-radius:3px}
+.points .ring{position:absolute;right:-30px;top:-30px;width:140px;height:140px;border-radius:50%;border:22px solid rgba(255,255,255,.06)}
+.reward{display:flex;align-items:center;gap:14px;padding:14px;background:#fff;border:1px solid var(--line);border-radius:14px}
+.reward .ic{width:44px;height:44px;border-radius:12px;background:var(--bg);display:grid;place-items:center;flex:none}
+.reward .cost{margin-left:auto;font-size:12px;font-weight:700;padding:8px 12px;border-radius:10px;background:var(--navy-soft);color:var(--navy);white-space:nowrap}
+.reward .cost.off{background:var(--bg);color:var(--muted-2)}
+.coupon{border:1.5px dashed var(--navy);border-radius:14px;padding:12px 14px;background:#fff}
+
+/* Listas / perfil */
+.list{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.list > *{display:flex;align-items:center;gap:12px;padding:14px 16px;width:100%;text-align:left;border-top:1px solid var(--line);font-size:14px;font-weight:500}
+.list > :first-child{border-top:0}
+.list .end{margin-left:auto;color:var(--muted-2);display:flex;align-items:center;gap:6px;font-size:13px}
+.premium-card{background:linear-gradient(135deg,#14284B,#2B4A7E);color:#fff;border-radius:18px;padding:18px;display:flex;align-items:center;gap:14px;width:100%;text-align:left}
+.stat3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stat3 > div{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;text-align:center}
+.stat3 b{display:block;font-size:18px}
+.stat3 span{font-size:11px;color:var(--muted)}
+.switch{width:44px;height:26px;border-radius:13px;background:var(--line);position:relative;flex:none;transition:background .2s}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:left .2s}
+.switch.on{background:var(--green)}
+.switch.on::after{left:21px}
+
+/* Premium */
+.plan{border:1.5px solid var(--navy);border-radius:18px;padding:18px;background:#fff}
+.plan .price{font-size:34px;font-weight:800;letter-spacing:-.02em}
+.benefit{display:flex;gap:12px;align-items:flex-start;padding:9px 0}
+.benefit .ok{width:24px;height:24px;border-radius:50%;background:var(--green-soft);color:var(--green);display:grid;place-items:center;flex:none}
+
+/* Anfitrión */
+.earn{background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px}
+.earn .num{font-size:32px;font-weight:800;letter-spacing:-.02em}
+.bars{display:flex;align-items:flex-end;gap:8px;height:90px;margin-top:16px}
+.bars div{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
+.bars i{width:100%;border-radius:6px 6px 3px 3px;background:var(--navy-soft)}
+.bars div.today i{background:var(--navy)}
+.bars span{font-size:10px;color:var(--muted-2);font-weight:600}
+.progress{height:8px;background:var(--bg);border-radius:4px;overflow:hidden}
+.progress i{display:block;height:100%;background:var(--green);border-radius:4px}
+.checkitem{display:flex;gap:10px;align-items:center;font-size:14px;padding:6px 0}
+.checkitem .c{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;flex:none;background:var(--bg);border:1.5px solid var(--line);color:#fff}
+.checkitem.done .c{background:var(--green);border-color:var(--green)}
+.photo-drop{border:1.5px dashed var(--line);border-radius:14px;min-height:96px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;color:var(--muted);font-size:13px;background:#fff;text-align:center;padding:10px;cursor:pointer}
+.photo-drop img{width:72px;height:72px;object-fit:cover;border-radius:10px}
+
+/* Modal inferior */
+.overlay{position:absolute;inset:0;z-index:100;background:rgba(15,23,42,.5);display:none;align-items:flex-end}
+.overlay.show{display:flex;animation:fade .2s}
+.modal{background:#fff;border-radius:26px 26px 0 0;width:100%;padding:22px 22px calc(26px + var(--sb));max-height:90%;overflow-y:auto}
+.sos-ring{width:170px;height:170px;margin:18px auto;position:relative;display:grid;place-items:center;user-select:none;-webkit-user-select:none;touch-action:none}
+.sos-ring svg{position:absolute;inset:0;transform:rotate(-90deg)}
+.sos-btn{width:130px;height:130px;border-radius:50%;background:var(--red);color:#fff;font-weight:800;font-size:22px;letter-spacing:.06em;position:relative;z-index:1;-webkit-touch-callout:none}
+.pulse{animation:pulse 1.4s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(225,29,72,.45)}100%{box-shadow:0 0 0 26px rgba(225,29,72,0)}}
+
+/* Toast */
+.toast{position:absolute;left:16px;right:16px;top:calc(12px + var(--st));z-index:200;background:var(--ink);color:#fff;border-radius:14px;padding:14px 16px;font-size:14px;font-weight:600;display:flex;gap:10px;align-items:center;transform:translateY(-160%);opacity:0;transition:all .3s;pointer-events:none}
+.toast.show{transform:none;opacity:1}
+.spinner{width:18px;height:18px;border:2.5px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;flex:none}
+.spinner.dark{border-color:rgba(20,40,75,.18);border-top-color:var(--navy)}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="views" id="views">
+
+    <!-- BIENVENIDA -->
+    <section class="view active" id="v-welcome">
+      <div class="welcome">
+        <div class="hero">
+          <div class="logo lg" data-logo="lg"></div>
+          <h1>Estaciona seguro.<br><span style="color:var(--muted-2)">Sin vueltas.</span></h1>
+          <p>Reserva cocheras verificadas cerca de tu destino o gana dinero alquilando la tuya, con respaldo y seguridad.</p>
+        </div>
+        <div class="stack">
+          <button class="role" onclick="pickRole('driver')"><div class="ic" data-icon="car"></div><div><b>Soy conductor</b><span>Busco dónde estacionar</span></div></button>
+          <button class="role" onclick="pickRole('host')"><div class="ic" data-icon="home"></div><div><b>Soy anfitrión</b><span>Tengo una cochera para alquilar</span></div></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- REGISTRO -->
+    <section class="view" id="v-register">
+      <div class="topbar"><button class="iconbtn" onclick="go('welcome')" data-icon="back"></button><h2>Crea tu cuenta</h2></div>
+      <div class="scroll">
+        <p class="small muted" style="margin-bottom:18px">Tus datos se guardan solo en este dispositivo.</p>
+        <div class="field"><label>Nombre y apellido</label><input id="rName" autocomplete="name" placeholder="Ej. Karina Rojas"></div>
+        <div class="field"><label>Celular</label><input id="rPhone" type="tel" inputmode="numeric" maxlength="9" placeholder="9XX XXX XXX"></div>
+        <div class="field"><label>DNI</label><input id="rDni" inputmode="numeric" maxlength="8" placeholder="8 dígitos"></div>
+        <div class="field" id="rPlateF"><label>Placa de tu vehículo</label><input id="rPlate" maxlength="7" placeholder="ABC-123" style="text-transform:uppercase"></div>
+        <label class="check" style="margin:6px 0 20px"><input type="checkbox" id="rTerms"><span>Acepto los Términos y Condiciones y la Política de Privacidad, y autorizo la validación de mi identidad.</span></label>
+        <button class="btn" onclick="register()">Continuar</button>
+      </div>
+    </section>
+
+    <!-- MAPA -->
+    <section class="view" id="v-map">
+      <div id="map"></div>
+      <div class="map-top">
+        <div class="search">
+          <span data-icon="search" style="color:var(--muted)"></span>
+          <input id="q" placeholder="Busca tu destino o dirección" autocomplete="off" enterkeyhint="search">
+          <button class="x" id="qx" onclick="clearDest()" data-icon="close" data-size="18"></button>
+        </div>
+        <div class="results" id="results"></div>
+        <div class="chips" id="filterChips">
+          <button class="chip on" data-f="all">Todos</button>
+          <button class="chip" data-f="ia"><span data-icon="spark" data-size="14"></span>Predicción IA</button>
+          <button class="chip" data-f="host">Cocheras Estaciónate</button>
+          <button class="chip" data-f="osm">Estacionamientos públicos</button>
+          <button class="chip" data-f="verified"><span data-icon="shield" data-size="14"></span>Verificados</button>
+          <button class="chip" data-f="covered">Techados</button>
+        </div>
+        <div class="ia-legend" id="iaLegend">
+          <b>Probabilidad de encontrar sitio · próximos 30 min</b>
+          <div class="bar"></div>
+          <div class="between muted"><span>Baja</span><span>Alta</span></div>
+        </div>
+      </div>
+      <button class="pill-float" id="areaBtn" onclick="searchHere()"><span data-icon="search" data-size="16"></span>Buscar en esta zona</button>
+      <div class="pill-float" id="loadingPill"><div class="spinner dark"></div>Buscando estacionamientos…</div>
+      <button class="fab fab-loc" id="fabLoc" onclick="locateMe()" data-icon="locate" title="Mi ubicación"></button>
+      <button class="fab fab-sos" id="fabSos" onclick="openSOS()">SOS</button>
+      <div class="sheet" id="sheet">
+        <button class="grab" onclick="toggleSheet()"><i></i></button>
+        <button class="active-banner" id="activeBanner" onclick="go('ticket')">
+          <span data-icon="qr"></span>
+          <div style="flex:1;min-width:0"><b style="font-size:14px">Reserva activa</b><div class="xs ellipsis" style="opacity:.75" id="activeBannerTxt"></div></div>
+          <span data-icon="chev"></span>
+        </button>
+        <div class="head"><b id="sheetTitle">Cerca de ti</b><div class="xs muted" id="sheetSub">Cargando…</div></div>
+        <div class="hlist" id="spotList"></div>
+      </div>
+    </section>
+
+    <!-- DETALLE -->
+    <section class="view" id="v-detail">
+      <div class="scroll" style="padding:0">
+        <div class="cover" id="cover"><div id="miniMap"></div><button class="iconbtn back" onclick="go('map')" data-icon="back"></button></div>
+        <div style="padding:18px 20px 24px" id="detailBody"></div>
+      </div>
+      <div class="footer-cta" id="detailCta"></div>
+    </section>
+
+    <!-- CHECKOUT -->
+    <section class="view" id="v-checkout">
+      <div class="topbar"><button class="iconbtn" onclick="go('detail')" data-icon="back"></button><h2>Confirmar reserva</h2></div>
+      <div class="scroll" id="checkoutBody"></div>
+      <div class="footer-cta"><button class="btn" id="payBtn" onclick="pay()" disabled>Pagar</button></div>
+    </section>
+
+    <!-- TICKET -->
+    <section class="view" id="v-ticket">
+      <div class="topbar"><button class="iconbtn" onclick="go('map')" data-icon="back"></button><h2>Tu acceso</h2><span class="badge green">Confirmada</span></div>
+      <div class="scroll" id="ticketBody"></div>
+    </section>
+
+    <!-- CALIFICAR -->
+    <section class="view" id="v-rate">
+      <div class="topbar"><button class="iconbtn" onclick="go('ticket')" data-icon="back"></button><h2>Califica tu experiencia</h2></div>
+      <div class="scroll" id="rateBody"></div>
+    </section>
+
+    <!-- RESERVAS -->
+    <section class="view" id="v-bookings">
+      <div class="title">Mis reservas</div><div class="subtitle">Activas e historial</div>
+      <div class="scroll" id="bookingsBody"></div>
+    </section>
+
+    <!-- RECOMPENSAS -->
+    <section class="view" id="v-rewards">
+      <div class="title">Recompensas</div><div class="subtitle">Suma puntos en cada reserva</div>
+      <div class="scroll" id="rewardsBody"></div>
+    </section>
+
+    <!-- PERFIL -->
+    <section class="view" id="v-profile">
+      <div class="title">Perfil</div><div class="subtitle" id="profileSub"></div>
+      <div class="scroll" id="profileBody"></div>
+    </section>
+
+    <!-- SUBPÁGINA GENÉRICA -->
+    <section class="view" id="v-sub">
+      <div class="topbar"><button class="iconbtn" id="subBack" data-icon="back"></button><h2 id="subTitle"></h2></div>
+      <div class="scroll" id="subBody"></div>
+    </section>
+
+    <!-- PREMIUM -->
+    <section class="view" id="v-premium">
+      <div class="topbar"><button class="iconbtn" onclick="go('profile')" data-icon="back"></button><h2>Estaciónate Premium</h2></div>
+      <div class="scroll" id="premiumBody"></div>
+    </section>
+
+    <!-- ANFITRIÓN PANEL -->
+    <section class="view" id="v-host">
+      <div class="title" id="hostHello">Hola</div><div class="subtitle">Así va tu cochera este mes</div>
+      <div class="scroll" id="hostBody"></div>
+    </section>
+
+    <!-- ANFITRIÓN COCHERAS -->
+    <section class="view" id="v-hostSpaces">
+      <div class="title">Mis cocheras</div><div class="subtitle">Disponibilidad, precio y ubicación</div>
+      <div class="scroll" id="hostSpacesBody"></div>
+    </section>
+
+    <!-- ANFITRIÓN PUBLICAR -->
+    <section class="view" id="v-hostNew">
+      <div class="topbar"><button class="iconbtn" onclick="go('hostSpaces')" data-icon="back"></button><h2>Publicar cochera</h2></div>
+      <div class="scroll">
+        <div class="field"><label>Nombre del espacio</label><input id="nName" placeholder="Ej. Cochera techada Av. Brasil"></div>
+        <div class="field"><label>Dirección exacta</label><input id="nAddr" placeholder="Ej. Av. Brasil 1250"></div>
+        <div class="field"><label>Distrito</label>
+          <select id="nDist"><option>Jesús María</option><option>Lince</option><option>Pueblo Libre</option><option>San Isidro</option><option>Miraflores</option><option>San Miguel</option><option>Magdalena del Mar</option><option>Surquillo</option><option>San Borja</option><option>Santiago de Surco</option><option>Barranco</option><option>Breña</option><option>Lima</option></select>
+        </div>
+        <div class="field"><label>Tipo de espacio</label><div class="chips" id="nType"><button class="chip on">Techada</button><button class="chip">Descubierta</button><button class="chip">Con portón</button></div></div>
+        <div class="field"><label>Vehículo admitido</label><div class="chips" id="nSize"><button class="chip on">Auto</button><button class="chip">SUV / Camioneta</button><button class="chip">Moto</button></div></div>
+        <div class="field">
+          <div class="between"><label>Precio por hora</label><b id="nPriceLbl">S/ 5.00</b></div>
+          <input type="range" id="nPrice" min="2" max="15" step="0.5" value="5">
+          <div class="xs muted">Precio sugerido para tu zona: S/ 4.50 – S/ 6.00</div>
+        </div>
+        <div class="field"><label>Días disponibles</label><div class="chips" id="nDays"><button class="chip on">L</button><button class="chip on">M</button><button class="chip on">M</button><button class="chip on">J</button><button class="chip on">V</button><button class="chip">S</button><button class="chip">D</button></div></div>
+        <div class="field"><label>Fotos del espacio</label>
+          <label class="photo-drop" id="photoDrop"><input type="file" accept="image/*" multiple hidden id="nPhotos"><span><span data-icon="camera" style="display:inline-block"></span><br>Toca para agregar fotos</span></label>
+        </div>
+        <label class="check" style="margin:6px 0 18px"><input type="checkbox" id="nTerms"><span>Declaro ser propietario o tener autorización para alquilar este espacio, y acepto el contrato marco de anfitrión.</span></label>
+        <button class="btn" id="pubBtn" onclick="publishSpace()">Publicar cochera</button>
+      </div>
+    </section>
+
+  </div>
+
+  <nav class="tabbar hidden" id="tabbar"></nav>
+
+  <div class="overlay" id="overlay" onclick="if(event.target===this)closeModal()"><div class="modal" id="modal"></div></div>
+  <div class="toast" id="toast"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* =========================================================
+   ÍCONOS
+   ========================================================= */
+const ICONS={
+  car:'<path d="M5 17h14M6 17v2M18 17v2M4 13l2-6h12l2 6v4H4z"/><circle cx="8" cy="14" r="1"/><circle cx="16" cy="14" r="1"/>',
+  home:'<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>',
+  map:'<path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>',
+  ticket:'<path d="M3 7h18v3a2 2 0 0 0 0 4v3H3v-3a2 2 0 0 0 0-4z"/><path d="M14 7v10" stroke-dasharray="2 2"/>',
+  gift:'<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M5 12v8h14v-8M12 8v12M12 8S10 3 7.5 4.5 9 8 12 8zM12 8s2-5 4.5-3.5S15 8 12 8z"/>',
+  user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4.5-6 8-6s7 2 8 6"/>',
+  back:'<path d="M15 5l-7 7 7 7"/>', close:'<path d="M6 6l12 12M18 6L6 18"/>', chev:'<path d="M9 5l7 7-7 7"/>',
+  shield:'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/>',
+  spark:'<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M6 18l2.5-2.5M15.5 8.5L18 6"/>',
+  locate:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="7"/>',
+  qr:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/>',
+  garage:'<path d="M3 21V9l9-5 9 5v12"/><path d="M7 21v-8h10v8M7 16h10"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  pin:'<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>',
+  camera:'<rect x="3" y="7" width="18" height="13" rx="2"/><circle cx="12" cy="13.5" r="3.5"/><path d="M8 7l1.5-3h5L16 7"/>',
+  bolt:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>', crown:'<path d="M3 8l4 4 5-7 5 7 4-4-2 11H5z"/>',
+  phone:'<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>',
+  chart:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>', plus:'<path d="M12 5v14M5 12h14"/>', check:'<path d="M5 12l5 5 9-10"/>',
+  bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 20a2 2 0 0 0 4 0"/>',
+  card:'<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
+  doc:'<path d="M6 2h8l5 5v15H6z"/><path d="M14 2v5h5M9 13h7M9 17h5"/>', swap:'<path d="M7 7h13l-4-4M17 17H4l4 4"/>',
+  logout:'<path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10"/>',
+  coffee:'<path d="M4 8h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM17 9h1.5a2.5 2.5 0 0 1 0 5H17M7 3v2M11 3v2"/>',
+  fuel:'<path d="M4 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M3 21h12M4 10h10M14 8l3 3v6a1.5 1.5 0 0 0 3 0V7l-3-3"/>',
+  wash:'<path d="M12 3s-5 6-5 10a5 5 0 0 0 10 0c0-4-5-10-5-10z"/>', cam:'<path d="M3 7h12v10H3zM15 10l6-3v10l-6-3"/>',
+  light:'<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9V16h7v-2.1A6 6 0 0 0 12 3z"/>', roof:'<path d="M2 12l10-7 10 7M5 10v10h14V10"/>',
+  route:'<circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h8a3 3 0 0 0 0-6H8a3 3 0 0 1 0-6h8"/>',
+  trash:'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>', edit:'<path d="M4 20h4L19 9l-4-4L4 16z"/>',
+  history:'<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/>', info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/>',
+  layers:'<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>'
+};
+function icon(n,s=20,w=1.8){return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round">${ICONS[n]||''}</svg>`}
+function paintIcons(root=document){
+  root.querySelectorAll('[data-icon]').forEach(el=>{ if(el.dataset.p) return; el.insertAdjacentHTML('afterbegin',icon(el.dataset.icon,+(el.dataset.size||20))); el.dataset.p=1; });
+  root.querySelectorAll('[data-logo]').forEach(el=>{ const s=el.dataset.logo==='lg'?38:20;
+    el.innerHTML=`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none"><path d="M6 4h12M6 12h8M6 20h12M6 4v16" stroke="#fff" stroke-width="3" stroke-linecap="round"/><circle cx="18.5" cy="12" r="1.8" fill="#94A3B8"/></svg>`; });
+}
+
+/* =========================================================
+   UTILIDADES
+   ========================================================= */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=n=>'S/ '+(+n).toFixed(2);
+const stars=n=>'★'.repeat(Math.round(n))+'☆'.repeat(5-Math.round(n));
+const initials=n=>String(n||'?').trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase();
+const firstName=n=>String(n||'').trim().split(/\s+/)[0]||'';
+const hhmm=t=>new Date(t).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
+const dmy=t=>new Date(t).toLocaleDateString('es-PE',{day:'2-digit',month:'short'});
+function km(a,b){const R=6371,dLat=(b[0]-a[0])*Math.PI/180,dLng=(b[1]-a[1])*Math.PI/180;
+  const x=Math.sin(dLat/2)**2+Math.cos(a[0]*Math.PI/180)*Math.cos(b[0]*Math.PI/180)*Math.sin(dLng/2)**2;return 2*R*Math.asin(Math.sqrt(x));}
+function hash(str){let h=2166136261;for(const c of String(str)){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return h>>>0}
+let toastT;
+function toast(msg,ic='check',ms=2600){const t=$('toast');t.innerHTML=icon(ic,20)+'<span>'+esc(msg)+'</span>';t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),ms)}
+function openModal(html){$('modal').innerHTML=html;$('overlay').classList.add('show');paintIcons($('modal'))}
+function closeModal(){$('overlay').classList.remove('show')}
+
+/* =========================================================
+   DATOS BASE (anfitriones de la plataforma – simulados)
+   ========================================================= */
+const LIMA=[-12.0860,-77.0440];
+const SEED=[
+  {id:'h1',name:'Cochera techada Salaverry',host:'Rosa M.',dist:'Jesús María',addr:'Av. Salaverry 1450',lat:-12.0790,lng:-77.0470,price:5,rating:4.9,reviews:48,verified:true,free:2,covered:true,feat:['Techada','Cámaras','Portón eléctrico']},
+  {id:'h2',name:'Cochera Campo de Marte',host:'Jorge P.',dist:'Jesús María',addr:'Jr. Nazca 210',lat:-12.0712,lng:-77.0428,price:4,rating:4.7,reviews:31,verified:true,free:1,covered:false,feat:['Descubierta','Vigilante','24 h']},
+  {id:'h3',name:'Cochera Residencial San Felipe',host:'Carmen L.',dist:'Jesús María',addr:'Res. San Felipe, Bl. 12',lat:-12.0812,lng:-77.0535,price:3.5,rating:4.6,reviews:19,verified:false,free:1,covered:true,feat:['Techada','Condominio cerrado']},
+  {id:'h4',name:'Parking Clínica aliada',host:'Convenio B2B',dist:'Jesús María',addr:'Av. Brasil 1100',lat:-12.0745,lng:-77.0505,price:6,rating:4.8,reviews:112,verified:true,free:7,covered:true,feat:['Techada','Cámaras','Convenio']},
+  {id:'h6',name:'Garage Lince Centro',host:'Ana T.',dist:'Lince',addr:'Jr. Manuel Candamo 480',lat:-12.0845,lng:-77.0310,price:4.5,rating:4.4,reviews:12,verified:false,free:0,covered:false,feat:['Descubierta']},
+  {id:'h7',name:'Estacionamiento Centro Financiero',host:'Edificio aliado',dist:'San Isidro',addr:'Calle Las Begonias 415',lat:-12.0960,lng:-77.0340,price:8,rating:4.9,reviews:203,verified:true,free:12,covered:true,feat:['Sótano','Cámaras','24 h','Convenio']},
+  {id:'h8',name:'Cochera El Olivar',host:'Patricia V.',dist:'San Isidro',addr:'Av. Conquistadores 320',lat:-12.0995,lng:-77.0385,price:7,rating:4.7,reviews:38,verified:true,free:1,covered:true,feat:['Techada','Portón']},
+  {id:'h9',name:'Cochera Parque Kennedy',host:'Miguel A.',dist:'Miraflores',addr:'Calle Schell 230',lat:-12.1205,lng:-77.0310,price:9,rating:4.6,reviews:76,verified:true,free:0,covered:true,feat:['Techada','Vigilante']},
+  {id:'h10',name:'Grifo aliado Pueblo Libre',host:'Convenio B2B',dist:'Pueblo Libre',addr:'Av. Sucre 1020',lat:-12.0765,lng:-77.0640,price:3,rating:4.5,reviews:58,verified:true,free:4,covered:false,feat:['Descubierta','Lavado','Convenio']},
+  {id:'h11',name:'Cochera Plaza San Miguel',host:'Rocío Q.',dist:'San Miguel',addr:'Av. La Marina 2050',lat:-12.0778,lng:-77.0840,price:4,rating:4.3,reviews:9,verified:false,free:2,covered:false,feat:['Descubierta']},
+  {id:'h12',name:'Cochera Av. Cuba',host:'Daniel F.',dist:'Jesús María',addr:'Av. Cuba 650',lat:-12.0838,lng:-77.0458,price:4.5,rating:4.8,reviews:22,verified:true,free:1,covered:true,feat:['Techada','Cámaras','Iluminada']},
+  {id:'h13',name:'Cochera Av. Larco',host:'Sofía B.',dist:'Miraflores',addr:'Av. Larco 980',lat:-12.1260,lng:-77.0295,price:8,rating:4.8,reviews:41,verified:true,free:1,covered:true,feat:['Techada','Cámaras']},
+  {id:'h14',name:'Cochera Surquillo Mercado',host:'Raúl C.',dist:'Surquillo',addr:'Jr. Dante 650',lat:-12.1130,lng:-77.0230,price:4,rating:4.5,reviews:15,verified:false,free:2,covered:false,feat:['Descubierta']},
+];
+const REVIEWS=[{n:'Andrea C.',s:5,t:'Muy fácil entrar con el QR. Espacio limpio y seguro.'},{n:'Renzo P.',s:5,t:'Llegué y el espacio estaba listo, el anfitrión muy amable.'},{n:'Lucía G.',s:4,t:'Buena ubicación, a dos cuadras de mi oficina.'}];
+
+/* =========================================================
+   ESTADO PERSISTENTE (localStorage)
+   ========================================================= */
+const KEY='estacionate_app_v2';
+const DEF={user:null,mode:'driver',premium:false,points:850,payMethod:'yape',notif:true,
+  vehicles:[],contacts:[],cards:[{brand:'Visa',last:'4821'}],active:null,history:[],coupons:[],recents:[],
+  hostSpaces:[],hostEarn:412.5,hostBookings:23};
+let S;
+try{S=Object.assign({},DEF,JSON.parse(localStorage.getItem(KEY)||'{}'))}catch(e){S={...DEF}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+// estado de sesión (no persistente)
+const R={view:'welcome',role:'driver',spot:null,hours:2,when:'Ahora',whenAt:null,filter:'all',ia:false,rating:0,tags:new Set(),
+  me:null,ref:null,refLabel:'tu ubicación',osm:[],osmLoaded:false,lastQ:null,photos:[]};
+
+/* =========================================================
+   NAVEGACIÓN
+   ========================================================= */
+const TABS={driver:[['map','map','Mapa'],['bookings','ticket','Reservas'],['rewards','gift','Recompensas'],['profile','user','Perfil']],
+  host:[['host','chart','Panel'],['hostSpaces','garage','Cocheras'],['profile','user','Perfil']]};
+const NO_TAB=['welcome','register','detail','checkout','ticket','rate','premium','hostNew','sub'];
+const RENDER={};
+function go(v,push=true){
+  R.view=v;
+  document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id==='v-'+v));
+  RENDER[v]&&RENDER[v]();
+  renderTabs();
+  const sc=document.querySelector('#v-'+v+' .scroll');if(sc)sc.scrollTop=0;
+  if(push&&!['welcome','register'].includes(v)) history.pushState({v},'');
+}
+window.addEventListener('popstate',e=>{ if($('overlay').classList.contains('show')){closeModal();history.pushState({v:R.view},'');return}
+  const v=e.state&&e.state.v; if(v&&S.user) go(v,false); else if(S.user) history.pushState({v:R.view},''); });
+function renderTabs(){
+  const tb=$('tabbar'); tb.classList.toggle('hidden',NO_TAB.includes(R.view));
+  tb.innerHTML=TABS[S.mode].map(([v,ic,l])=>`<button class="${R.view===v?'on':''}" onclick="go('${v}')">${icon(ic,22)}<span>${l}</span></button>`).join('');
+}
+
+/* =========================================================
+   REGISTRO
+   ========================================================= */
+function pickRole(r){R.role=r;$('rPlateF').style.display=r==='driver'?'':'none';go('register')}
+function register(){
+  const name=$('rName').value.trim(),phone=$('rPhone').value.replace(/\D/g,''),dni=$('rDni').value.replace(/\D/g,''),plate=$('rPlate').value.trim().toUpperCase();
+  if(name.split(/\s+/).length<2) return toast('Ingresa tu nombre y apellido','info');
+  if(!/^9\d{8}$/.test(phone)) return toast('Ingresa un celular válido de 9 dígitos','info');
+  if(!/^\d{8}$/.test(dni)) return toast('El DNI debe tener 8 dígitos','info');
+  if(R.role==='driver'&&plate.length<6) return toast('Ingresa la placa de tu vehículo','info');
+  if(!$('rTerms').checked) return toast('Debes aceptar los términos','info');
+  S.user={name,phone,dni}; S.mode=R.role;
+  if(plate) S.vehicles=[{plate,model:'Mi auto'}];
+  if(R.role==='host'&&!S.hostSpaces.length) S.hostSpaces=[{id:'m1',mine:true,on:true,name:'Mi cochera',host:firstName(name),dist:'Lince',addr:'Av. Arequipa 2340',lat:-12.0880,lng:-77.0355,price:5.5,rating:4.8,reviews:27,verified:true,free:1,covered:true,feat:['Techada','Cámaras'],bookings:23}];
+  save(); go(S.mode==='driver'?'map':'host'); toast('¡Bienvenido(a), '+firstName(name)+'!','check');
+}
+function logout(){ if(!confirm('¿Cerrar sesión y borrar los datos de este dispositivo?')) return; localStorage.removeItem(KEY); location.reload(); }
+function switchMode(){
+  S.mode=S.mode==='driver'?'host':'driver';
+  if(S.mode==='host'&&!S.hostSpaces.length) S.hostSpaces=[{id:'m1',mine:true,on:true,name:'Mi cochera',host:firstName(S.user.name),dist:'Lince',addr:'Av. Arequipa 2340',lat:-12.0880,lng:-77.0355,price:5.5,rating:4.8,reviews:27,verified:true,free:1,covered:true,feat:['Techada','Cámaras'],bookings:23}];
+  save(); go(S.mode==='driver'?'map':'host'); toast(S.mode==='driver'?'Modo conductor':'Modo anfitrión','swap');
+}
+
+/* =========================================================
+   ESPACIOS (plataforma + públicos de OpenStreetMap)
+   ========================================================= */
+function allSpots(){return SEED.concat(S.hostSpaces.filter(h=>h.on)).concat(R.osm)}
+function spotById(id){return allSpots().find(s=>s.id===id)||(S.active&&S.active.spot.id===id&&S.active.spot)||S.history.map(h=>h.spot).find(s=>s.id===id)}
+const refPt=()=>R.ref||R.me||LIMA;
+const walkMin=s=>Math.max(1,Math.round(km(refPt(),[s.lat,s.lng])*1000/80));
+function osmToSpot(el){
+  const t=el.tags||{}, lat=el.lat??el.center?.lat, lng=el.lon??el.center?.lon, h=hash(el.type+el.id);
+  const kind={underground:'Subterráneo','multi-storey':'Edificio',surface:'Superficie',rooftop:'Azotea',street_side:'En calle',lane:'En calle'}[t.parking]||'';
+  const covered=['underground','multi-storey'].includes(t.parking);
+  const free=t.fee==='no';
+  const price=free?0:[4,5,5,6,6,7,8][h%7]+(covered?1:0);
+  const addr=[t['addr:street'],t['addr:housenumber']].filter(Boolean).join(' ');
+  const feat=[kind||'Público']; if(t.capacity)feat.push(t.capacity+' plazas'); if(t.opening_hours)feat.push(t.opening_hours==='24/7'?'24 h':t.opening_hours);
+  if(t.supervised==='yes')feat.push('Vigilado'); if(free)feat.push('Gratuito');
+  return {id:'osm-'+el.type[0]+el.id,src:'osm',name:t.name||(t.operator?'Estacionamiento '+t.operator:kind?'Estacionamiento '+kind.toLowerCase():'Estacionamiento público'),
+    host:t.operator||'Operador del estacionamiento',dist:t['addr:district']||t['addr:city']||'',addr:addr||'Dirección referencial en mapa',lat,lng,price,
+    rating:0,reviews:0,verified:false,free:t.access==='private'?0:(1+h%9),covered,feat,priceRef:true,gratis:free,access:t.access||'',tags:t};
+}
+const OVERPASS=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
+async function loadParkings(lat,lng,radius=1300){
+  $('loadingPill').classList.add('show'); $('areaBtn').classList.remove('show');
+  const q=`[out:json][timeout:20];(node["amenity"="parking"](around:${radius},${lat},${lng});way["amenity"="parking"](around:${radius},${lat},${lng});relation["amenity"="parking"](around:${radius},${lat},${lng}););out center 80;`;
+  let data=null;
+  for(const url of OVERPASS){
+    try{ const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(),15000);
+      const r=await fetch(url,{method:'POST',body:'data='+encodeURIComponent(q),headers:{'Content-Type':'application/x-www-form-urlencoded'},signal:ctrl.signal});
+      clearTimeout(to); if(r.ok){data=await r.json();break;} }catch(e){}
+  }
+  $('loadingPill').classList.remove('show');
+  R.lastQ=[lat,lng];
+  if(!data){toast('No se pudo consultar OpenStreetMap. Intenta de nuevo.','info');return}
+  R.osm=data.elements.filter(e=>(e.lat??e.center?.lat)!=null&&(e.tags||{}).access!=='private').map(osmToSpot);
+  R.osmLoaded=true;
+  drawMarkers(); renderSpotList(); if(R.ia) drawIA();
+}
+
+/* =========================================================
+   MAPA
+   ========================================================= */
+let map,meMarker,destMarker,routeLine,iaLayer,markers=[];
+function initMap(){
+  if(map) return;
+  if(typeof L==='undefined'){ $('map').innerHTML='<div class="map-fallback">No se pudo cargar el mapa. Revisa tu conexión a internet.</div>'; return; }
+  map=L.map('map',{zoomControl:false}).setView(LIMA,15);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · © CARTO',subdomains:'abcd',maxZoom:19}).addTo(map);
+  iaLayer=L.layerGroup();
+  map.on('moveend',()=>{ if(!R.lastQ) return; const c=map.getCenter(); $('areaBtn').classList.toggle('show',km(R.lastQ,[c.lat,c.lng])>0.7 && !$('loadingPill').classList.contains('show')); });
+  map.on('click',()=>$('results').classList.remove('show'));
+  // ubicación: intento silencioso si ya hay permiso
+  if(navigator.permissions){ navigator.permissions.query({name:'geolocation'}).then(p=>{ if(p.state==='granted') locateMe(true); else loadParkings(...LIMA); }).catch(()=>loadParkings(...LIMA)); }
+  else loadParkings(...LIMA);
+}
+function setMe(lat,lng){ R.me=[lat,lng];
+  if(!meMarker) meMarker=L.marker(R.me,{icon:L.divIcon({className:'',html:'<div class="me"></div>',iconSize:[18,18],iconAnchor:[9,9]}),zIndexOffset:500}).addTo(map);
+  else meMarker.setLatLng(R.me); }
+function locateMe(silent){
+  if(!navigator.geolocation){ if(!silent) toast('Tu navegador no permite ubicación','info'); return; }
+  if(!silent) toast('Obteniendo tu ubicación…','locate',1500);
+  navigator.geolocation.getCurrentPosition(p=>{
+    setMe(p.coords.latitude,p.coords.longitude);
+    if(!R.ref){ map.flyTo(R.me,16,{duration:.7}); loadParkings(...R.me); R.refLabel='tu ubicación'; }
+    else map.flyTo(R.me,16,{duration:.7});
+  },err=>{
+    if(!silent) toast(err.code===1?'Permite el acceso a tu ubicación en el navegador':'No se pudo obtener tu ubicación','info',3200);
+    if(!R.osmLoaded) loadParkings(...LIMA);
+  },{enableHighAccuracy:true,timeout:10000,maximumAge:60000});
+}
+function searchHere(){ const c=map.getCenter(); loadParkings(c.lat,c.lng); }
+function spotPass(s){
+  const f=R.filter;
+  if(f==='host') return s.src!=='osm'; if(f==='osm') return s.src==='osm';
+  if(f==='verified') return s.verified; if(f==='covered') return s.covered; return true;
+}
+function drawMarkers(){
+  if(!map) return; markers.forEach(m=>m.remove()); markers=[];
+  allSpots().filter(spotPass).forEach(s=>{
+    let cls,inner;
+    if(s.src==='osm'){ cls='osm'; inner=`<b>P</b>${s.gratis?'Gratis':'S/'+s.price}`; }
+    else { cls=s.free>0?'host':'full'; inner=`${s.verified?icon('shield',12,2.4):''}S/${s.price%1?s.price.toFixed(1):s.price}`; }
+    const m=L.marker([s.lat,s.lng],{icon:L.divIcon({className:'',html:`<div class="pin ${cls}"><div class="p">${inner}</div><div class="tip"></div></div>`,iconSize:[70,34],iconAnchor:[35,34]}),zIndexOffset:s.src==='osm'?0:200}).addTo(map);
+    m.on('click',()=>openSpot(s.id)); markers.push(m);
+  });
+}
+function renderSpotList(){
+  const list=allSpots().filter(spotPass).filter(s=>km(refPt(),[s.lat,s.lng])<3).sort((a,b)=>(a.src==='osm')-(b.src==='osm')||walkMin(a)-walkMin(b)).slice(0,40);
+  const nh=list.filter(s=>s.src!=='osm').length,no=list.length-nh;
+  $('sheetTitle').textContent=R.ref?'Cerca de '+R.refLabel:'Cerca de ti';
+  $('sheetSub').textContent=R.osmLoaded||nh?`${nh} cocheras Estaciónate · ${no} estacionamientos públicos`:'Cargando…';
+  $('spotList').innerHTML=list.length?list.map(s=>`
+    <button class="spot-card" onclick="openSpot('${s.id}')">
+      <div class="between" style="margin-bottom:6px">
+        ${s.src==='osm'?'<span class="badge gray">Público · OSM</span>':s.verified?`<span class="badge verified">${icon('shield',12,2.2)}Verificado</span>`:'<span class="badge gray">Anfitrión nuevo</span>'}
+        ${s.free>0?`<span class="badge green">${s.src==='osm'?'Disponible':s.free+' libre'+(s.free>1?'s':'')}</span>`:'<span class="badge red">Lleno</span>'}
+      </div>
+      <div class="bold ellipsis" style="font-size:14px">${esc(s.name)}</div>
+      <div class="xs muted ellipsis" style="margin:2px 0 8px">${walkMin(s)} min a pie${s.rating?' · ★ '+s.rating:''}${s.dist?' · '+esc(s.dist):''}</div>
+      <div class="price">${s.gratis?'Gratis':money(s.price)} ${s.gratis?'':'<small>/ hora'+(s.priceRef?' (ref.)':'')+'</small>'}</div>
+    </button>`).join(''):`<div class="empty" style="padding:14px 20px;text-align:left">No encontramos estacionamientos en esta zona. Mueve el mapa y toca “Buscar en esta zona”.</div>`;
+}
+function positionFabs(){ const sh=$('sheet'); const h=sh.classList.contains('min')?64:sh.offsetHeight; $('fabSos').style.bottom=(h+14)+'px'; $('fabLoc').style.bottom=(h+80)+'px'; $('areaBtn').style.bottom=(h+18)+'px'; $('loadingPill').style.bottom=(h+18)+'px'; }
+function toggleSheet(){ $('sheet').classList.toggle('min'); positionFabs(); }
+RENDER.map=()=>{
+  initMap();
+  setTimeout(()=>{ if(map){map.invalidateSize();drawMarkers();} positionFabs(); },40);
+  renderSpotList();
+  $('activeBanner').classList.toggle('show',!!S.active);
+  if(S.active) $('activeBannerTxt').textContent=S.active.spot.name+' · '+S.active.code;
+};
+// Filtros
+$('filterChips').addEventListener('click',e=>{
+  const c=e.target.closest('.chip'); if(!c) return; const f=c.dataset.f;
+  if(f==='ia'){ R.ia=!R.ia; c.classList.toggle('on',R.ia); $('iaLegend').classList.toggle('show',R.ia); if(R.ia){drawIA();toast('Predicción calculada con la oferta real de la zona y la hora actual','spark',3200)} else iaLayer&&iaLayer.remove(); return; }
+  document.querySelectorAll('#filterChips .chip:not([data-f=ia])').forEach(x=>x.classList.remove('on')); c.classList.add('on'); R.filter=f; drawMarkers(); renderSpotList();
+});
+// "IA": estima probabilidad por celda con la oferta encontrada y la hora del día
+function drawIA(){
+  if(!map) return; iaLayer.clearLayers();
+  const c=map.getCenter(), hr=new Date().getHours();
+  const peak=(hr>=8&&hr<=10)||(hr>=17&&hr<=20)?0.7:(hr>=11&&hr<=16)?0.85:1;
+  const spots=allSpots().filter(s=>s.free>0), step=0.0055;
+  for(let i=-3;i<=3;i++)for(let j=-3;j<=3;j++){
+    const p=[c.lat+i*step,c.lng+j*step];
+    const n=spots.filter(s=>km(p,[s.lat,s.lng])<0.45).reduce((a,s)=>a+(s.src==='osm'?1:Math.min(3,s.free)*.8),0);
+    const prob=Math.max(.05,Math.min(.95,(.12+n*.17)*peak));
+    const col=prob>.6?'#16A34A':prob>.35?'#F59E0B':'#E11D48';
+    L.circle(p,{radius:330,weight:0,fillColor:col,fillOpacity:.17,interactive:false}).addTo(iaLayer);
+  }
+  iaLayer.addTo(map);
+}
+
+/* =========================================================
+   BÚSQUEDA DE DIRECCIONES (Nominatim · OpenStreetMap)
+   ========================================================= */
+let qT, qCache={};
+$('q').addEventListener('input',e=>{ const v=e.target.value.trim(); $('qx').classList.toggle('show',!!v||!!R.ref); clearTimeout(qT); if(v.length<3){showRecents();return} qT=setTimeout(()=>geocode(v),550); });
+$('q').addEventListener('focus',()=>{ if(!$('q').value.trim()) showRecents(); });
+$('q').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); const f=$('results').querySelector('button[data-i]'); if(f) f.click(); else { clearTimeout(qT); geocode($('q').value.trim(),true);} } });
+function showRecents(){
+  if(!S.recents.length){$('results').classList.remove('show');return}
+  $('results').innerHTML='<div class="foot" style="border:0">Búsquedas recientes</div>'+S.recents.map((r,i)=>`<button data-i onclick="pickRecent(${i})"><span class="ic">${icon('history',18)}</span><div style="min-width:0"><b class="small ellipsis" style="display:block">${esc(r.label)}</b><div class="xs muted ellipsis">${esc(r.sub||'')}</div></div></button>`).join('');
+  $('results').classList.add('show');
+}
+async function geocode(q,auto){
+  if(!q) return;
+  const box=$('results');
+  box.innerHTML=`<div class="row small muted" style="padding:14px"><div class="spinner dark"></div>Buscando “${esc(q)}”…</div>`; box.classList.add('show');
+  try{
+    let data=qCache[q];
+    if(!data){
+      const url='https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=6&countrycodes=pe&accept-language=es&viewbox=-77.25,-11.75,-76.75,-12.35&q='+encodeURIComponent(q);
+      const r=await fetch(url,{headers:{'Accept':'application/json'}}); data=await r.json(); qCache[q]=data;
+    }
+    if(!data.length){ box.innerHTML='<div class="small muted" style="padding:14px">Sin resultados. Prueba con calle, número y distrito (ej. “Av. Brasil 1250, Jesús María”).</div>'; return; }
+    window._res=data;
+    box.innerHTML=data.map((d,i)=>{ const a=d.address||{}; const main=d.name||[a.road,a.house_number].filter(Boolean).join(' ')||d.display_name.split(',')[0];
+      const sub=[a.road&&d.name?a.road:'',a.suburb||a.neighbourhood||'',a.city_district||a.city||a.town||''].filter(Boolean).join(', ');
+      return `<button data-i onclick="pickResult(${i})"><span class="ic">${icon('pin',18)}</span><div style="min-width:0"><b class="small ellipsis" style="display:block">${esc(main)}</b><div class="xs muted ellipsis">${esc(sub||d.display_name)}</div></div></button>`;}).join('')
+      +'<div class="foot">Resultados de © OpenStreetMap · Nominatim</div>';
+    if(auto) pickResult(0);
+  }catch(e){ box.innerHTML='<div class="small muted" style="padding:14px">No se pudo buscar. Revisa tu conexión.</div>'; }
+}
+function pickResult(i){ const d=window._res[i], a=d.address||{};
+  const main=d.name||[a.road,a.house_number].filter(Boolean).join(' ')||d.display_name.split(',')[0];
+  const sub=[a.suburb||a.neighbourhood,a.city_district||a.city].filter(Boolean).join(', ');
+  pickPlace(+d.lat,+d.lon,main,false,sub); }
+function pickRecent(i){const r=S.recents[i];pickPlace(r.lat,r.lng,r.label,true)}
+function pickPlace(lat,lng,label,fromRecent,sub=''){
+  if(!map) return toast('El mapa no está disponible','info');
+  $('results').classList.remove('show'); $('q').value=label; $('q').blur(); $('qx').classList.add('show');
+  R.ref=[lat,lng]; R.refLabel=label;
+  if(!fromRecent){ S.recents=[{lat,lng,label,sub}].concat(S.recents.filter(r=>r.label!==label)).slice(0,5); save(); }
+  if(destMarker) destMarker.remove();
+  destMarker=L.marker(R.ref,{icon:L.divIcon({className:'',html:'<div class="dest"><i></i></div>',iconSize:[30,30],iconAnchor:[15,30]}),zIndexOffset:600}).addTo(map);
+  if(routeLine){routeLine.remove();routeLine=null}
+  map.flyTo(R.ref,16,{duration:.8}); $('sheet').classList.remove('min'); positionFabs();
+  loadParkings(lat,lng,1000);
+}
+function clearDest(){ $('q').value=''; $('qx').classList.remove('show'); $('results').classList.remove('show'); R.ref=null; R.refLabel='tu ubicación';
+  if(destMarker){destMarker.remove();destMarker=null} if(routeLine){routeLine.remove();routeLine=null}
+  renderSpotList(); if(R.me) map.flyTo(R.me,15); }
+
+/* =========================================================
+   RUTA (OSRM)
+   ========================================================= */
+async function showRoute(id){
+  const s=spotById(id); go('map'); if(!map) return;
+  const from=R.me||R.ref||LIMA;
+  if(!R.me) toast('Activa tu ubicación para una ruta exacta. Usando punto de referencia.','info',3000);
+  if(routeLine) routeLine.remove();
+  try{
+    const r=await fetch(`https://router.project-osrm.org/route/v1/driving/${from[1]},${from[0]};${s.lng},${s.lat}?overview=full&geometries=geojson`);
+    const d=await r.json(); const rt=d.routes[0];
+    routeLine=L.geoJSON(rt.geometry,{style:{color:'#14284B',weight:5,opacity:.85}}).addTo(map);
+    map.fitBounds(routeLine.getBounds(),{paddingTopLeft:[30,150],paddingBottomRight:[30,260]});
+    toast(`${Math.round(rt.duration/60)} min en auto · ${(rt.distance/1000).toFixed(1)} km`,'route',4000);
+  }catch(e){
+    routeLine=L.polyline([from,[s.lat,s.lng]],{color:'#14284B',weight:4,dashArray:'6 8'}).addTo(map);
+    map.fitBounds(routeLine.getBounds(),{padding:[60,60]});
+  }
+}
+
+/* =========================================================
+   DETALLE
+   ========================================================= */
+let miniMap;
+function openSpot(id){ R.spot=id; R.hours=2; R.when='Ahora'; R.whenAt=null; go('detail'); }
+const feeFor=sub=>S.premium||sub===0?0:Math.max(.5,+(sub*.08).toFixed(2));
+RENDER.detail=()=>{
+  const s=spotById(R.spot); if(!s) return go('map');
+  const osm=s.src==='osm', sub=s.price*R.hours, fee=feeFor(sub);
+  $('cover').classList.toggle('osm',osm);
+  setTimeout(()=>{ if(typeof L==='undefined') return;
+    if(miniMap){miniMap.remove();} miniMap=L.map('miniMap',{zoomControl:false,attributionControl:false,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,touchZoom:false,keyboard:false}).setView([s.lat,s.lng],17);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{subdomains:'abcd'}).addTo(miniMap);
+    L.marker([s.lat,s.lng],{icon:L.divIcon({className:'',html:'<div class="dest" style="background:var(--navy)"><i></i></div>',iconSize:[30,30],iconAnchor:[15,30]})}).addTo(miniMap);
+  },30);
+  const fi=f=>({Techada:'roof',Cámaras:'cam',Vigilante:'shield',Vigilado:'shield','24 h':'clock',Iluminada:'light',Lavado:'wash',Convenio:'bolt'}[f]||'check');
+  const t=s.tags||{};
+  $('detailBody').innerHTML=`
+    <div class="row" style="gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      ${osm?'<span class="badge gray">Estacionamiento público · OpenStreetMap</span>':s.verified?`<span class="badge verified">${icon('shield',12,2.2)}Espacio Verificado</span>`:'<span class="badge gray">Anfitrión nuevo</span>'}
+      ${s.free>0?`<span class="badge green">${osm?'Disponible':s.free+' espacio'+(s.free>1?'s':'')+' libre'+(s.free>1?'s':'')}</span>`:'<span class="badge red">Sin espacios ahora</span>'}
+    </div>
+    <h2 style="font-size:22px;letter-spacing:-.02em">${esc(s.name)}</h2>
+    <div class="small muted" style="margin:4px 0 14px">${esc(s.addr)}${s.dist?', '+esc(s.dist):''} · ${walkMin(s)} min a pie de ${esc(R.ref?R.refLabel:'ti')}</div>
+    <div class="row" style="gap:22px;margin-bottom:16px">
+      <div><b style="font-size:18px">${s.gratis?'Gratis':money(s.price)}</b><div class="xs muted">${s.gratis?'según OSM':'por hora'+(s.priceRef?' · ref.':'')}</div></div>
+      <div><b style="font-size:18px">${s.rating?'★ '+s.rating:'—'}</b><div class="xs muted">${s.reviews?s.reviews+' reseñas':'Sin reseñas'}</div></div>
+      <div><b style="font-size:18px">${t.capacity||(s.free>0?(osm?'Alta':'92%'):'—')}</b><div class="xs muted">${t.capacity?'plazas':'Confianza IA'}</div></div>
+    </div>
+    <div class="feat">${s.feat.map(f=>`<span>${icon(fi(f),14)}${esc(f)}</span>`).join('')}</div>
+    <button class="btn ghost sm" style="margin-top:14px" onclick="showRoute('${s.id}')">${icon('route',18)}Ver ruta en el mapa</button>
+    ${s.gratis?'':`
+    <div class="sec-title">Tu reserva</div>
+    <div class="card">
+      <div class="small bold" style="margin-bottom:8px">Llegada</div>
+      <div class="chips" style="flex-wrap:wrap">${['Ahora','En 30 min','En 1 h','Programar'].map(w=>`<button class="chip ${R.when===w?'on':''}" onclick="setWhen('${w}')">${w}</button>`).join('')}</div>
+      ${R.when==='Programar'?`<div class="field" style="margin:12px 0 0"><input type="datetime-local" id="whenAt" value="${R.whenAt||''}" onchange="R.whenAt=this.value" min="${new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,16)}"></div>`:''}
+      <div class="divider"></div>
+      <div class="between">
+        <div><div class="small bold">Duración</div><div class="xs muted">Puedes extender desde la app</div></div>
+        <div class="stepper"><button onclick="R.hours=Math.max(1,R.hours-1);RENDER.detail()">−</button><b style="min-width:34px;text-align:center">${R.hours} h</b><button onclick="R.hours=Math.min(12,R.hours+1);RENDER.detail()">+</button></div>
+      </div>
+    </div>`}
+    <div class="sec-title">${osm?'Operador':'Anfitrión'}</div>
+    <div class="card row">
+      <div class="avatar">${osm?icon('garage',20):initials(s.host)}</div>
+      <div style="flex:1;min-width:0"><b class="ellipsis" style="display:block">${esc(s.host)}</b><div class="xs muted">${osm?'Datos públicos de OpenStreetMap'+(t.opening_hours?' · Horario: '+esc(t.opening_hours):''):(s.verified?'Identidad validada · Responde en 5 min':'Identidad en validación')}</div></div>
+      ${s.verified?`<span style="color:var(--navy)">${icon('shield',22)}</span>`:''}
+    </div>
+    ${osm?`<div class="card row" style="margin-top:12px;background:var(--amber-soft);border-color:transparent"><span style="color:var(--amber)">${icon('info',20)}</span><div class="xs" style="color:#92400E">Estacionamiento real tomado de OpenStreetMap. El precio es referencial y la reserva queda sujeta a confirmación del operador.</div></div>`:`
+    <div class="sec-title">Reseñas</div>
+    <div class="card" style="padding:4px 16px">${REVIEWS.map(r=>`<div class="review"><div class="between"><b class="small">${r.n}</b><span class="stars">${stars(r.s)}</span></div><div class="small muted" style="margin-top:4px">${r.t}</div></div>`).join('')}</div>`}
+  `;
+  const nav=`https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}`;
+  $('detailCta').innerHTML=s.gratis
+    ?`<a class="btn" href="${nav}" target="_blank" rel="noopener">${icon('route',18)}Cómo llegar</a>`
+    :`<div><div class="xs muted">Total</div><div class="total">${money(sub+fee)}</div></div><button class="btn" style="flex:1" ${s.free===0||S.active?'disabled':''} onclick="goCheckout()">${S.active?'Ya tienes una reserva activa':s.free===0?'Sin disponibilidad':'Reservar'}</button>`;
+};
+function setWhen(w){R.when=w;RENDER.detail()}
+function goCheckout(){ if(R.when==='Programar'&&!R.whenAt) return toast('Elige fecha y hora de llegada','clock'); go('checkout'); }
+
+/* =========================================================
+   CHECKOUT
+   ========================================================= */
+RENDER.checkout=()=>{
+  const s=spotById(R.spot), sub=s.price*R.hours, fee=feeFor(sub), pts=Math.round(sub*10)*(S.premium?2:1);
+  const methods=[['yape','Yape','#6B21A8','Y'],['plin','Plin','#0891B2','P']].concat(S.cards.map((c,i)=>['card'+i,c.brand+' •••• '+c.last,'#14284B','']));
+  if(!methods.find(m=>m[0]===S.payMethod)) S.payMethod='yape';
+  const whenTxt=R.when==='Programar'?new Date(R.whenAt).toLocaleString('es-PE',{weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):R.when;
+  $('checkoutBody').innerHTML=`
+    <div class="card row"><div class="avatar" style="border-radius:12px">${icon('garage',22)}</div>
+      <div style="flex:1;min-width:0"><b class="small ellipsis" style="display:block">${esc(s.name)}</b><div class="xs muted">${esc(whenTxt)} · ${R.hours} h · Placa ${esc(S.vehicles[0]?.plate||'—')}</div></div></div>
+    <div class="sec-title">Resumen</div>
+    <div class="card">
+      <div class="line-item"><span class="muted">Estacionamiento (${R.hours} h × ${money(s.price)})</span><span>${money(sub)}</span></div>
+      <div class="line-item"><span class="muted">Tarifa de servicio y seguro</span><span>${S.premium?'<s class="muted">'+money(Math.max(.5,sub*.08))+'</s> S/ 0.00':money(fee)}</span></div>
+      <div class="line-item"><span class="muted">Puntos a ganar</span><span style="color:var(--green);font-weight:700">+${pts} pts</span></div>
+      <div class="line-item total"><span>Total</span><span>${money(sub+fee)}</span></div>
+    </div>
+    <div class="sec-title">Método de pago</div>
+    <div class="stack" id="payMethods">${methods.map(([k,l,c,ch])=>`<button class="pay ${S.payMethod===k?'on':''}" data-k="${k}"><div class="mark" style="background:${c}">${ch||icon('card',18)}</div><b class="small">${esc(l)}</b><span class="radio"></span></button>`).join('')}</div>
+    <div class="sec-title">Contrato digital</div>
+    <div class="card contract">
+      <div class="row" style="gap:8px">${icon('doc',18)}<b>Acuerdo de uso temporal de espacio</b></div>
+      <ol>
+        <li>El ${s.src==='osm'?'operador':'anfitrión'} garantiza el acceso durante el horario reservado.</li>
+        <li>El conductor respeta el horario y las normas del inmueble.</li>
+        <li>Estaciónate custodia el pago hasta finalizar el servicio.</li>
+        <li>Cobertura ante daños según la póliza vigente de la plataforma.</li>
+        <li>Cancelación gratuita hasta 15 minutos antes de la llegada.</li>
+      </ol>
+      <div class="divider"></div>
+      <label class="check"><input type="checkbox" id="contractChk"><span>Acepto el contrato y autorizo el cobro. Firma digital vinculada a mi DNI ${esc((S.user?.dni||'').replace(/\d(?=\d{3})/g,'•'))}.</span></label>
+    </div>`;
+  const btn=$('payBtn'); btn.textContent='Pagar '+money(sub+fee); btn.disabled=true;
+  $('contractChk').onchange=e=>btn.disabled=!e.target.checked;
+  $('payMethods').onclick=e=>{const p=e.target.closest('.pay');if(!p)return;S.payMethod=p.dataset.k;save();document.querySelectorAll('#payMethods .pay').forEach(x=>x.classList.toggle('on',x===p))};
+};
+function pay(){
+  const s=spotById(R.spot), sub=s.price*R.hours, fee=feeFor(sub);
+  const btn=$('payBtn'); btn.disabled=true; btn.innerHTML='<div class="spinner"></div>Procesando pago';
+  setTimeout(()=>{
+    const off={'Ahora':0,'En 30 min':30,'En 1 h':60}[R.when];
+    const start=R.when==='Programar'?new Date(R.whenAt).getTime():Date.now()+(off||0)*6e4;
+    const snap={...s}; delete snap.tags;
+    S.active={spot:snap,hours:R.hours,total:sub+fee,code:'EST-'+Math.floor(1000+Math.random()*9000),start,end:start+R.hours*36e5,pts:Math.round(sub*10)*(S.premium?2:1),created:Date.now(),method:S.payMethod};
+    if(s.free>0&&s.src!=='osm') s.free--;
+    save(); go('ticket'); toast('Pago aprobado · Reserva confirmada','check');
+  },1300);
+}
+
+/* =========================================================
+   TICKET
+   ========================================================= */
+let tInt;
+function drawQR(cv,text){const N=29,c=cv.getContext('2d');cv.width=N;cv.height=N;let seed=hash(text);const rnd=()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/4294967296);
+  c.fillStyle='#fff';c.fillRect(0,0,N,N);c.fillStyle='#0F172A';const inF=(x,y)=>(x<8&&y<8)||(x>N-9&&y<8)||(x<8&&y>N-9);
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++)if(!inF(x,y)&&rnd()>.5)c.fillRect(x,y,1,1);
+  const f=(x,y)=>{c.fillStyle='#0F172A';c.fillRect(x,y,7,7);c.fillStyle='#fff';c.fillRect(x+1,y+1,5,5);c.fillStyle='#0F172A';c.fillRect(x+2,y+2,3,3)};f(0,0);f(N-7,0);f(0,N-7);}
+RENDER.ticket=()=>{
+  const a=S.active,b=$('ticketBody');
+  if(!a){b.innerHTML='<div class="empty">No tienes una reserva activa.<br><br><button class="btn soft sm" onclick="go(\'map\')">Buscar estacionamiento</button></div>';return}
+  const started=Date.now()>=a.start;
+  b.innerHTML=`
+    <div class="ticket">
+      <div class="top"><div class="xs" style="opacity:.7">${a.spot.src==='osm'?'Estacionamiento':'Cochera'}</div><b style="font-size:17px">${esc(a.spot.name)}</b><div class="xs" style="opacity:.7;margin-top:2px">${esc(a.spot.addr)}${a.spot.dist?', '+esc(a.spot.dist):''}</div></div>
+      <div class="qr"><canvas id="qrC"></canvas><div class="code">${a.code}</div><div class="xs muted" style="text-align:center">Muestra este código al llegar o escanéalo en el lector del portón</div></div>
+      <div style="text-align:center;padding:16px 20px 0"><div class="xs muted" id="tLbl">${started?'Tiempo restante':'Tu reserva empieza en'}</div><div class="timer" id="timer">--:--:--</div></div>
+      <div class="kv">
+        <div><span>Ingreso</span><b>${hhmm(a.start)}${dmy(a.start)!==dmy(Date.now())?' · '+dmy(a.start):''}</b></div>
+        <div><span>Salida</span><b>${hhmm(a.end)}</b></div>
+        <div><span>Vehículo</span><b>${esc(S.vehicles[0]?.plate||'—')}</b></div>
+        <div><span>Pagado</span><b>${money(a.total)}</b></div>
+      </div>
+    </div>
+    <div class="stack" style="margin-top:16px">
+      <div class="row" style="gap:10px">
+        <button class="btn ghost" onclick="showRoute('${a.spot.id}')">${icon('route',18)}Ver ruta</button>
+        <a class="btn ghost" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${a.spot.lat},${a.spot.lng}">${icon('pin',18)}Google Maps</a>
+      </div>
+      <div class="row" style="gap:10px">
+        <button class="btn soft" onclick="extend()">${icon('plus',18)}Extender 1 h</button>
+        <button class="btn danger" onclick="openSOS()">${icon('shield',18)}SOS</button>
+      </div>
+      ${started?`<button class="btn" onclick="R.rating=0;R.tags=new Set();go('rate')">Finalizar estacionamiento</button>`:`<button class="btn danger" onclick="cancelBooking()">Cancelar reserva (gratis)</button>`}
+    </div>`;
+  drawQR($('qrC'),a.code); clearInterval(tInt);
+  const tick=()=>{const el=$('timer');if(!el||!S.active)return clearInterval(tInt);const now=Date.now();
+    const target=now<S.active.start?S.active.start:S.active.end; let ms=Math.max(0,target-now);
+    if(now>=S.active.start&&$('tLbl').textContent!=='Tiempo restante'){RENDER.ticket();return}
+    el.textContent=[Math.floor(ms/36e5),Math.floor(ms%36e5/6e4),Math.floor(ms%6e4/1e3)].map(n=>String(n).padStart(2,'0')).join(':');
+    el.style.color=(now>=S.active.start&&ms<9e5)?'var(--red)':'';};
+  tick(); tInt=setInterval(tick,1000);
+};
+function extend(){const a=S.active;a.end+=36e5;a.hours++;a.total+=a.spot.price;save();RENDER.ticket();toast('Extendiste 1 hora · '+money(a.spot.price),'clock')}
+function cancelBooking(){ if(!confirm('¿Cancelar la reserva? Se te devolverá el 100%.'))return; const a=S.active; const s=spotById(a.spot.id); if(s&&s.src!=='osm')s.free++; S.active=null;save();go('bookings');toast('Reserva cancelada · Reembolso de '+money(a.total)+' en camino','check',3200)}
+
+/* =========================================================
+   CALIFICACIÓN
+   ========================================================= */
+RENDER.rate=()=>{
+  const a=S.active; if(!a) return go('map');
+  const tags=['Fácil acceso','Espacio limpio','Zona segura','Anfitrión amable','Buena iluminación','Bien señalizado'];
+  $('rateBody').innerHTML=`
+    <div style="text-align:center;padding:8px 0 4px">
+      <div class="avatar" style="width:64px;height:64px;margin:0 auto 10px;font-size:20px">${initials(a.spot.host)}</div>
+      <b style="font-size:17px">¿Cómo te fue en ${esc(a.spot.name)}?</b>
+      <div class="small muted" style="margin-top:4px">Tu calificación ayuda a mantener una comunidad confiable</div>
+    </div>
+    <div class="bigstars">${[1,2,3,4,5].map(i=>`<button class="${i<=R.rating?'on':''}" onclick="R.rating=${i};RENDER.rate()">★</button>`).join('')}</div>
+    <div class="chips" style="flex-wrap:wrap;justify-content:center;margin-bottom:16px">${tags.map(t=>`<button class="chip ${R.tags.has(t)?'on':''}" onclick="R.tags.has('${t}')?R.tags.delete('${t}'):R.tags.add('${t}');RENDER.rate()">${t}</button>`).join('')}</div>
+    <textarea id="rateTxt" placeholder="Cuéntanos algo más (opcional)"></textarea>
+    <button class="btn" style="margin-top:16px" ${R.rating?'':'disabled'} onclick="submitRating()">Enviar y finalizar</button>`;
+};
+function submitRating(){
+  const a=S.active, bonus=a.pts+50;
+  S.points+=bonus; S.history.unshift({spot:a.spot,date:a.start,hours:a.hours,total:a.total,rated:R.rating,code:a.code,comment:$('rateTxt').value});
+  const s=spotById(a.spot.id); if(s&&s.src!=='osm') s.free++;
+  S.active=null; clearInterval(tInt); save(); go('map'); toast('¡Gracias! Ganaste '+bonus+' puntos','gift');
+}
+
+/* =========================================================
+   RESERVAS
+   ========================================================= */
+RENDER.bookings=()=>{
+  const a=S.active;
+  const fav=S.history.length?Object.entries(S.history.reduce((m,h)=>(m[h.spot.id]=(m[h.spot.id]||0)+1,m),{})).sort((x,y)=>y[1]-x[1])[0][0]:null;
+  const favSpot=fav&&S.history.find(h=>h.spot.id===fav).spot;
+  $('bookingsBody').innerHTML=`
+    ${a?`<div class="sec-title" style="margin-top:0">Activa</div>
+    <button class="card row" style="width:100%;text-align:left;border-color:var(--navy)" onclick="go('ticket')">
+      <div class="avatar" style="border-radius:12px;background:var(--navy);color:#fff">${icon('qr',22)}</div>
+      <div style="flex:1;min-width:0"><b class="small ellipsis" style="display:block">${esc(a.spot.name)}</b><div class="xs muted">${dmy(a.start)} · ${hhmm(a.start)} – ${hhmm(a.end)} · ${a.code}</div></div>${icon('chev',18)}
+    </button>`:''}
+    <div class="sec-title" ${a?'':'style="margin-top:0"'}>Historial</div>
+    ${S.history.length?`<div class="stack">${S.history.map(h=>`<div class="card row">
+        <div class="avatar" style="border-radius:12px">${icon('garage',20)}</div>
+        <div style="flex:1;min-width:0"><b class="small ellipsis" style="display:block">${esc(h.spot.name)}</b><div class="xs muted">${dmy(h.date)} · ${h.hours} h · ${h.code}</div><div class="stars xs" style="margin-top:2px">${stars(h.rated)}</div></div>
+        <div style="text-align:right"><b class="small">${money(h.total)}</b><div><button class="xs bold" style="color:var(--navy);margin-top:6px" onclick="openSpot('${h.spot.id}')">Repetir</button></div></div>
+      </div>`).join('')}</div>`:'<div class="card empty">Aún no tienes reservas finalizadas.<br>Tu historial aparecerá aquí.</div>'}
+    ${favSpot?`<div class="sec-title">Recomendado para ti</div>
+    <button class="card row" style="width:100%;text-align:left" onclick="openSpot('${favSpot.id}')"><span style="color:var(--navy)">${icon('spark',22)}</span>
+      <div style="flex:1;min-width:0"><b class="small">Vuelve a ${esc(favSpot.name)}</b><div class="xs muted">Es tu lugar más usado. Resérvalo en un toque.</div></div>${icon('chev',18)}</button>`:''}`;
+};
+
+/* =========================================================
+   RECOMPENSAS
+   ========================================================= */
+const REWARDS=[['clock','1 hora gratis','En cualquier cochera verificada',500],['coffee','Café gratis','Cafeterías aliadas cerca de tu cochera',300],['fuel','S/ 10 en grifo aliado','Canjeable en estaciones afiliadas',800],['wash','Lavado de auto 50%','Lavaderos aliados',1200],['crown','1 mes Premium','Todos los beneficios Premium',2500]];
+RENDER.rewards=()=>{
+  const lvl=S.points>=3000?['Oro',5000]:S.points>=1000?['Plata',3000]:['Bronce',1000];
+  $('rewardsBody').innerHTML=`
+    <div class="points"><div class="ring"></div><div class="xs" style="opacity:.7">Tus puntos</div><div class="num">${S.points.toLocaleString('es-PE')}</div>
+      <div class="bar"><i style="width:${Math.min(100,S.points/lvl[1]*100)}%"></i></div><div class="xs" style="opacity:.8">Nivel ${lvl[0]} · ${Math.max(0,lvl[1]-S.points)} pts para el siguiente nivel</div></div>
+    <div class="stat3" style="margin-top:12px"><div><b>${S.history.length}</b><span>Reservas</span></div><div><b>${S.coupons.length}</b><span>Cupones</span></div><div><b>${S.premium?'2x':'1x'}</b><span>Multiplicador</span></div></div>
+    ${S.coupons.length?`<div class="sec-title">Mis cupones</div><div class="stack">${S.coupons.map(c=>`<div class="coupon between"><div><b class="small">${esc(c.t)}</b><div class="xs muted">Válido hasta ${dmy(c.exp)}</div></div><span class="code" style="font-size:13px">${c.code}</span></div>`).join('')}</div>`:''}
+    <div class="sec-title">Canjea</div>
+    <div class="stack">${REWARDS.map(([ic,t,d,c],i)=>`<div class="reward"><div class="ic">${icon(ic,20)}</div><div style="min-width:0"><b class="small">${t}</b><div class="xs muted">${d}</div></div><button class="cost ${S.points<c?'off':''}" onclick="redeem(${i})">${c} pts</button></div>`).join('')}</div>
+    <p class="xs muted" style="margin-top:14px">Ganas 10 puntos por cada sol pagado y 50 puntos extra por calificar.</p>`;
+};
+function redeem(i){const [,t,,c]=REWARDS[i]; if(S.points<c) return toast('Te faltan '+(c-S.points)+' puntos','gift');
+  if(!confirm('¿Canjear '+c+' puntos por '+t+'?'))return; S.points-=c;
+  if(t==='1 mes Premium'){S.premium=true} S.coupons.unshift({t,code:'CP'+Math.random().toString(36).slice(2,7).toUpperCase(),exp:Date.now()+30*864e5});
+  save();RENDER.rewards();toast('Canjeaste: '+t,'gift');}
+
+/* =========================================================
+   PERFIL + SUBPÁGINAS
+   ========================================================= */
+RENDER.profile=()=>{
+  const host=S.mode==='host',u=S.user||{};
+  $('profileSub').textContent=host?'Cuenta de anfitrión':'Cuenta de conductor';
+  $('profileBody').innerHTML=`
+    <div class="card row" style="margin-bottom:12px">
+      <div class="avatar" style="width:56px;height:56px;font-size:18px">${initials(u.name)}</div>
+      <div style="flex:1;min-width:0"><b class="ellipsis" style="display:block">${esc(u.name)}</b><div class="xs muted">+51 ${esc(u.phone)}</div>
+        <div class="row" style="gap:6px;margin-top:6px"><span class="badge verified">${icon('shield',12,2.2)}DNI validado</span>${S.premium&&!host?`<span class="badge amber">${icon('crown',12,2.2)}Premium</span>`:''}</div></div>
+    </div>
+    ${host?'':`<button class="premium-card" onclick="go('premium')"><div class="avatar" style="background:rgba(255,255,255,.12);color:#fff">${icon('crown',22)}</div>
+      <div style="flex:1"><b>${S.premium?'Eres Premium':'Hazte Premium'}</b><div class="xs" style="opacity:.75">${S.premium?'Sin tarifa de servicio y puntos dobles':'S/ 20 al mes · sin tarifa de servicio'}</div></div>${icon('chev',18)}</button>`}
+    <div class="sec-title">Cuenta</div>
+    <div class="list">
+      ${host?`<button onclick="openSub('bank')">${icon('card',20)}Cuenta para depósitos<span class="end">${S.bank?esc(S.bank.bank+' •••• '+S.bank.acc.slice(-4)):'Agregar'}${icon('chev',16)}</span></button>`:
+      `<button onclick="openSub('vehicles')">${icon('car',20)}Mis vehículos<span class="end">${S.vehicles.length}${icon('chev',16)}</span></button>
+       <button onclick="openSub('payments')">${icon('card',20)}Métodos de pago<span class="end">${S.cards.length+2}${icon('chev',16)}</span></button>`}
+      <button onclick="openSub('contacts')">${icon('phone',20)}Contactos de emergencia<span class="end">${S.contacts.length}${icon('chev',16)}</span></button>
+      <button onclick="openSub('contracts')">${icon('doc',20)}Mis contratos digitales<span class="end">${S.history.length+(S.active?1:0)}${icon('chev',16)}</span></button>
+      <div>${icon('bell',20)}Notificaciones<span class="switch ${S.notif?'on':''}" style="margin-left:auto" onclick="S.notif=!S.notif;save();this.classList.toggle('on')"></span></div>
+    </div>
+    <div class="sec-title">Modo</div>
+    <div class="list">
+      <button onclick="switchMode()">${icon('swap',20)}<div><b>Cambiar a modo ${host?'conductor':'anfitrión'}</b><div class="xs muted">${host?'Busca y reserva estacionamiento':'Gana dinero con tu cochera'}</div></div><span class="end">${icon('chev',16)}</span></button>
+      <button onclick="logout()" style="color:var(--red)">${icon('logout',20)}Cerrar sesión</button>
+    </div>
+    <p class="xs muted" style="text-align:center;margin-top:20px">Estaciónate 1.0 · Mapas © OpenStreetMap</p>`;
+};
+function openSub(kind){R.sub=kind;go('sub')}
+RENDER.sub=()=>{
+  const k=R.sub,b=$('subBody'); $('subBack').onclick=()=>go('profile');
+  const T={vehicles:'Mis vehículos',payments:'Métodos de pago',contacts:'Contactos de emergencia',contracts:'Mis contratos',bank:'Cuenta para depósitos'};
+  $('subTitle').textContent=T[k];
+  if(k==='vehicles') b.innerHTML=`<div class="stack">${S.vehicles.map((v,i)=>`<div class="card row"><div class="avatar" style="border-radius:12px">${icon('car',20)}</div><div style="flex:1"><b>${esc(v.plate)}</b><div class="xs muted">${esc(v.model)}${i===0?' · Principal':''}</div></div>${i?`<button class="iconbtn" onclick="S.vehicles.unshift(S.vehicles.splice(${i},1)[0]);save();RENDER.sub()" title="Hacer principal">${icon('check',18)}</button>`:''}<button class="iconbtn" onclick="S.vehicles.splice(${i},1);save();RENDER.sub()">${icon('trash',18)}</button></div>`).join('')||'<div class="card empty">Sin vehículos registrados</div>'}</div>
+    <div class="sec-title">Agregar vehículo</div><div class="field"><input id="vPlate" placeholder="Placa (ABC-123)" maxlength="7" style="text-transform:uppercase"></div><div class="field"><input id="vModel" placeholder="Marca y modelo (opcional)"></div>
+    <button class="btn" onclick="const p=$('vPlate').value.trim().toUpperCase();if(p.length<6)return toast('Placa inválida','info');S.vehicles.push({plate:p,model:$('vModel').value.trim()||'Vehículo'});save();RENDER.sub();toast('Vehículo agregado')">Agregar</button>`;
+  if(k==='payments') b.innerHTML=`<div class="stack">
+      <div class="card row"><div class="avatar" style="border-radius:12px;background:#6B21A8;color:#fff">Y</div><b style="flex:1">Yape</b>${S.payMethod==='yape'?'<span class="badge green">Predeterminado</span>':`<button class="chip" onclick="S.payMethod='yape';save();RENDER.sub()">Usar</button>`}</div>
+      <div class="card row"><div class="avatar" style="border-radius:12px;background:#0891B2;color:#fff">P</div><b style="flex:1">Plin</b>${S.payMethod==='plin'?'<span class="badge green">Predeterminado</span>':`<button class="chip" onclick="S.payMethod='plin';save();RENDER.sub()">Usar</button>`}</div>
+      ${S.cards.map((c,i)=>`<div class="card row"><div class="avatar" style="border-radius:12px;background:var(--navy);color:#fff">${icon('card',18)}</div><b style="flex:1">${esc(c.brand)} •••• ${esc(c.last)}</b>${S.payMethod==='card'+i?'<span class="badge green">Predeterminado</span>':`<button class="chip" onclick="S.payMethod='card${i}';save();RENDER.sub()">Usar</button>`}<button class="iconbtn" onclick="S.cards.splice(${i},1);if(S.payMethod.startsWith('card'))S.payMethod='yape';save();RENDER.sub()">${icon('trash',18)}</button></div>`).join('')}
+    </div>
+    <div class="sec-title">Agregar tarjeta</div>
+    <div class="field"><input id="cNum" inputmode="numeric" maxlength="19" placeholder="Número de tarjeta"></div>
+    <div class="row" style="gap:10px"><div class="field" style="flex:1"><input id="cExp" placeholder="MM/AA" maxlength="5"></div><div class="field" style="flex:1"><input id="cCvv" placeholder="CVV" maxlength="4" inputmode="numeric"></div></div>
+    <button class="btn" onclick="addCard()">Agregar tarjeta</button><p class="xs muted" style="margin-top:10px">Demo: no se realizan cobros reales.</p>`;
+  if(k==='contacts') b.innerHTML=`<p class="small muted" style="margin-bottom:14px">Recibirán tu ubicación si activas el botón de pánico.</p><div class="stack">${S.contacts.map((c,i)=>`<div class="card row"><div class="avatar">${initials(c.name)}</div><div style="flex:1"><b>${esc(c.name)}</b><div class="xs muted">${esc(c.phone)}</div></div><a class="iconbtn" href="tel:${esc(c.phone)}">${icon('phone',18)}</a><button class="iconbtn" onclick="S.contacts.splice(${i},1);save();RENDER.sub()">${icon('trash',18)}</button></div>`).join('')||'<div class="card empty">Aún no agregaste contactos</div>'}</div>
+    <div class="sec-title">Agregar contacto</div><div class="field"><input id="ctName" placeholder="Nombre"></div><div class="field"><input id="ctPhone" type="tel" placeholder="Celular" maxlength="9"></div>
+    <button class="btn" onclick="const n=$('ctName').value.trim(),p=$('ctPhone').value.replace(/\\D/g,'');if(!n||p.length<9)return toast('Completa nombre y celular','info');S.contacts.push({name:n,phone:p});save();RENDER.sub();toast('Contacto agregado')">Agregar</button>`;
+  if(k==='contracts'){const all=(S.active?[{...S.active,date:S.active.start,act:1}]:[]).concat(S.history);
+    b.innerHTML=all.length?`<div class="stack">${all.map(c=>`<button class="card row" style="width:100%;text-align:left" onclick="showContract('${c.code}')"><div class="avatar" style="border-radius:12px">${icon('doc',20)}</div><div style="flex:1;min-width:0"><b class="small ellipsis" style="display:block">${esc(c.spot.name)}</b><div class="xs muted">${c.code} · ${dmy(c.date)}</div></div>${c.act?'<span class="badge green">Vigente</span>':'<span class="badge gray">Cerrado</span>'}</button>`).join('')}</div>`:'<div class="card empty">Tus contratos firmados aparecerán aquí</div>';}
+  if(k==='bank') b.innerHTML=`<p class="small muted" style="margin-bottom:14px">Aquí depositamos tus ganancias cada viernes.</p>
+    <div class="field"><label>Banco</label><select id="bkB">${['BCP','BBVA','Interbank','Scotiabank','BanBif'].map(x=>`<option ${S.bank?.bank===x?'selected':''}>${x}</option>`).join('')}</select></div>
+    <div class="field"><label>Número de cuenta o CCI</label><input id="bkA" inputmode="numeric" value="${esc(S.bank?.acc||'')}" placeholder="20 dígitos"></div>
+    <button class="btn" onclick="const a=$('bkA').value.replace(/\\D/g,'');if(a.length<10)return toast('Cuenta inválida','info');S.bank={bank:$('bkB').value,acc:a};save();go('profile');toast('Cuenta guardada')">Guardar</button>`;
+};
+function addCard(){const n=$('cNum').value.replace(/\D/g,'');if(n.length<15||!/^\d\d\/\d\d$/.test($('cExp').value)||$('cCvv').value.length<3)return toast('Revisa los datos de la tarjeta','info');
+  const brand=n[0]==='4'?'Visa':n[0]==='5'?'Mastercard':n[0]==='3'?'Amex':'Tarjeta';S.cards.push({brand,last:n.slice(-4)});S.payMethod='card'+(S.cards.length-1);save();RENDER.sub();toast('Tarjeta agregada')}
+function showContract(code){const c=S.active?.code===code?S.active:S.history.find(h=>h.code===code);
+  openModal(`<div class="between"><b style="font-size:18px">Contrato ${c.code}</b><button class="iconbtn" onclick="closeModal()" data-icon="close"></button></div>
+  <div class="contract" style="margin-top:12px;text-align:left"><p><b>Partes:</b> ${esc(S.user.name)} (DNI ${esc(S.user.dni)}) y ${esc(c.spot.host)}.</p><p><b>Espacio:</b> ${esc(c.spot.name)}, ${esc(c.spot.addr)}.</p><p><b>Periodo:</b> ${dmy(c.date||c.start)}, ${c.hours} h.</p><p><b>Monto:</b> ${money(c.total)}.</p>
+  <ol><li>El anfitrión garantiza el acceso durante el horario reservado.</li><li>El conductor respeta el horario y las normas del inmueble.</li><li>Estaciónate custodia el pago hasta finalizar el servicio.</li><li>Cobertura ante daños según póliza vigente.</li></ol>
+  <p class="xs muted" style="margin-top:10px">Firmado digitalmente · ${new Date(c.created||c.date).toLocaleString('es-PE')}</p></div>`);}
+
+/* =========================================================
+   PREMIUM
+   ========================================================= */
+RENDER.premium=()=>{
+  const b=[['Sin tarifa de servicio','Ahorra en cada reserva'],['Reserva anticipada hasta 7 días','Asegura tu espacio para la semana'],['Acceso prioritario','Espacios exclusivos en zonas de alta demanda'],['Seguro ampliado','Mayor cobertura ante daños o robos'],['Puntos dobles','Sube de nivel el doble de rápido'],['Descuentos en comercios aliados','Grifos, lavaderos, cafeterías y clínicas']];
+  $('premiumBody').innerHTML=`
+    <div style="text-align:center;padding:4px 0 18px"><div class="logo lg" style="margin:0 auto 12px">${icon('crown',32)}</div><h2 style="font-size:22px;letter-spacing:-.02em">Estaciona sin pensarlo</h2><div class="small muted" style="margin-top:4px">Para quienes estacionan todas las semanas</div></div>
+    <div class="plan"><div class="between"><b>Plan mensual</b><span class="badge green">Más elegido</span></div>
+      <div class="price" style="margin:6px 0 2px">S/ 20<span class="small muted" style="font-weight:600"> / mes</span></div><div class="xs muted">O S/ 300 al año</div><div class="divider"></div>
+      ${b.map(([t,d])=>`<div class="benefit"><div class="ok">${icon('check',14,2.6)}</div><div><b class="small">${t}</b><div class="xs muted">${d}</div></div></div>`).join('')}</div>
+    <button class="btn ${S.premium?'danger':''}" style="margin-top:18px" onclick="S.premium=!S.premium;save();RENDER.premium();toast(S.premium?'¡Ya eres Premium!':'Premium cancelado',S.premium?'crown':'check')">${S.premium?'Cancelar Premium':'Activar Premium · S/ 20'}</button>
+    <p class="xs muted" style="text-align:center;margin-top:10px">Cancela cuando quieras. Sin permanencia.</p>`;
+};
+
+/* =========================================================
+   ANFITRIÓN
+   ========================================================= */
+RENDER.host=()=>{
+  $('hostHello').textContent='Hola, '+firstName(S.user?.name);
+  const days=[['L',38],['M',52],['M',41],['J',66],['V',74],['S',29],['D',18]],max=74,today=(new Date().getDay()+6)%7;
+  const mine=S.hostSpaces[0], revs=mine?.reviews||0;
+  const checks=[['Identidad (DNI) validada',1],['Fotos del espacio aprobadas',S.hostSpaces.some(h=>h.photos)||mine?.id==='m1'?1:0],['Documento de propiedad o autorización',1],['5 reseñas de 4.5★ o más',revs>=5?1:0]];
+  const done=checks.filter(c=>c[1]).length;
+  $('hostBody').innerHTML=`
+    <div class="earn"><div class="between"><span class="small muted">Ingresos del mes</span><span class="badge green">+18% vs. mes anterior</span></div>
+      <div class="num">${money(S.hostEarn)}</div><div class="xs muted">Neto, después de la comisión de 15% · ${S.bank?'depósito el viernes en '+esc(S.bank.bank):'<a href="#" onclick="openSub(\'bank\');return false" style="color:var(--navy);font-weight:700">agrega tu cuenta para cobrar</a>'}</div>
+      <div class="bars">${days.map((d,i)=>`<div class="${i===today?'today':''}"><i style="height:${d[1]/max*100}%"></i><span>${d[0]}</span></div>`).join('')}</div></div>
+    <div class="stat3" style="margin-top:12px"><div><b>68%</b><span>Ocupación</span></div><div><b>${S.hostBookings}</b><span>Reservas</span></div><div><b>★ 4.8</b><span>Reputación</span></div></div>
+    <div class="sec-title">Validar llegada</div>
+    <div class="card"><div class="small muted" style="margin-bottom:10px">Ingresa el código del QR del conductor</div>
+      <div class="row" style="gap:10px"><div class="field" style="flex:1;margin:0"><input id="vCode" placeholder="EST-0000" style="text-transform:uppercase"></div><button class="btn" style="width:auto;padding:0 18px" onclick="validateCode()">Validar</button></div></div>
+    <div class="sec-title">Próximas llegadas</div>
+    <div class="stack">${[['Karina R.','Hoy 3:00 – 5:00 pm','ABC-123',4.9,'EST-4821'],['Diego M.','Hoy 6:30 – 8:30 pm','BKT-904',4.7,'EST-7310']].map(([n,t,p,r,c])=>`
+      <div class="card row"><div class="avatar">${initials(n)}</div><div style="flex:1;min-width:0"><b class="small">${n} <span class="muted xs">★ ${r}</span></b><div class="xs muted">${t} · Placa ${p}</div></div>
+      <button class="chip" onclick="$('vCode').value='${c}';validateCode()">${icon('qr',14)}Validar</button></div>`).join('')}</div>
+    <div class="sec-title">Sello Espacio Verificado</div>
+    <div class="card"><div class="between" style="margin-bottom:10px"><b class="small">Tu avance</b><b class="small" style="color:var(--green)">${done}/${checks.length}</b></div>
+      <div class="progress"><i style="width:${done/checks.length*100}%"></i></div>
+      <div style="margin-top:10px">${checks.map(([t,d])=>`<div class="checkitem ${d?'done':''}"><div class="c">${d?icon('check',12,3):''}</div><span class="${d?'':'muted'}">${t}</span></div>`).join('')}</div>
+      <div class="xs muted" style="margin-top:8px">Los espacios verificados reciben hasta 3 veces más reservas.</div></div>`;
+};
+function validateCode(){const c=$('vCode').value.trim().toUpperCase();
+  const known=['EST-4821','EST-7310'].concat(S.active?[S.active.code]:[]).concat(S.history.map(h=>h.code));
+  if(!/^EST-\d{4}$/.test(c)) return toast('Formato inválido. Ej: EST-1234','info');
+  if(known.includes(c)){S.hostEarn+=+(5.5*2*.85).toFixed(2);S.hostBookings++;save();RENDER.host();toast('QR válido · Ingreso registrado','qr')} else toast('Código no encontrado o vencido','info');}
+RENDER.hostSpaces=()=>{
+  $('hostSpacesBody').innerHTML=`<div class="stack">${S.hostSpaces.map((h,i)=>`
+    <div class="card">
+      <div class="row"><div class="avatar" style="border-radius:12px">${icon('garage',20)}</div><div style="flex:1;min-width:0"><b class="small ellipsis" style="display:block">${esc(h.name)}</b><div class="xs muted ellipsis">${esc(h.addr)}, ${esc(h.dist)}</div></div>
+        <span class="switch ${h.on?'on':''}" onclick="S.hostSpaces[${i}].on=!S.hostSpaces[${i}].on;save();RENDER.hostSpaces();toast(S.hostSpaces[${i}].on?'Visible en el mapa':'Cochera pausada')"></span></div>
+      <div class="divider"></div>
+      <div class="between"><span class="small">Precio por hora</span><b class="small" id="pl${i}">${money(h.price)}</b></div>
+      <input type="range" min="2" max="15" step="0.5" value="${h.price}" oninput="$('pl${i}').textContent=money(this.value)" onchange="S.hostSpaces[${i}].price=+this.value;save();toast('Precio actualizado')">
+      <div class="between xs" style="margin-top:8px"><span class="muted">${h.on?'Visible para conductores':'Pausada'} · ${h.bookings||0} reservas</span>
+        <div class="row" style="gap:6px">${h.verified?`<span class="badge verified">${icon('shield',12,2.2)}Verificado</span>`:'<span class="badge amber">En revisión</span>'}
+        <button class="iconbtn" style="width:32px;height:32px" onclick="viewOnMap(${i})">${icon('pin',16)}</button>
+        <button class="iconbtn" style="width:32px;height:32px" onclick="if(confirm('¿Eliminar esta cochera?')){S.hostSpaces.splice(${i},1);save();RENDER.hostSpaces()}">${icon('trash',16)}</button></div></div>
+    </div>`).join('')||'<div class="card empty">Aún no publicas ninguna cochera</div>'}</div>
+    <button class="btn" style="margin-top:16px" onclick="go('hostNew')">${icon('plus',18)}Publicar cochera</button>
+    <div class="card row" style="margin-top:16px;background:var(--navy-soft);border-color:transparent"><span style="color:var(--navy)">${icon('spark',22)}</span><div><b class="small">Consejo de la IA</b><div class="xs muted">La demanda en tu zona sube 40% entre 8 y 10 am. Activa disponibilidad temprano para ganar más.</div></div></div>`;
+};
+function viewOnMap(i){const h=S.hostSpaces[i];S.mode='driver';save();go('map');setTimeout(()=>{map&&map.flyTo([h.lat,h.lng],17)},200);toast('Así ven tu cochera los conductores','pin')}
+document.querySelectorAll('#nType,#nSize').forEach(g=>g.addEventListener('click',e=>{const c=e.target.closest('.chip');if(!c)return;g.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));c.classList.add('on')}));
+$('nDays').addEventListener('click',e=>{const c=e.target.closest('.chip');c&&c.classList.toggle('on')});
+$('nPrice').addEventListener('input',e=>$('nPriceLbl').textContent=money(e.target.value));
+$('nPhotos').addEventListener('change',e=>{R.photos=[...e.target.files].slice(0,6);const d=$('photoDrop');d.querySelectorAll('img').forEach(x=>x.remove());
+  R.photos.forEach(f=>{const img=document.createElement('img');img.src=URL.createObjectURL(f);d.appendChild(img)}); d.querySelector('span').style.display=R.photos.length?'none':''});
+async function publishSpace(){
+  const name=$('nName').value.trim(),addr=$('nAddr').value.trim(),dist=$('nDist').value,price=+$('nPrice').value;
+  if(!name||!addr) return toast('Completa nombre y dirección','info');
+  if(!$('nTerms').checked) return toast('Acepta la declaración para publicar','info');
+  const btn=$('pubBtn');btn.disabled=true;btn.innerHTML='<div class="spinner"></div>Ubicando dirección…';
+  let lat,lng,found=false;
+  try{const r=await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=pe&q='+encodeURIComponent(addr+', '+dist+', Lima, Perú'));const d=await r.json();if(d[0]){lat=+d[0].lat;lng=+d[0].lon;found=true}}catch(e){}
+  if(!found){lat=LIMA[0]+(Math.random()-.5)*.01;lng=LIMA[1]+(Math.random()-.5)*.01}
+  const covered=$('nType').querySelector('.on').textContent==='Techada';
+  S.hostSpaces.push({id:'m'+Date.now(),mine:true,on:true,name,host:firstName(S.user.name),dist,addr,lat,lng,price,rating:0,reviews:0,verified:false,free:1,covered,
+    feat:[$('nType').querySelector('.on').textContent,$('nSize').querySelector('.on').textContent],bookings:0,photos:R.photos.length});
+  save(); ['nName','nAddr'].forEach(i=>$(i).value='');$('nTerms').checked=false;R.photos=[];$('photoDrop').querySelectorAll('img').forEach(x=>x.remove());$('photoDrop').querySelector('span').style.display='';
+  btn.disabled=false;btn.textContent='Publicar cochera';
+  go('hostSpaces'); toast(found?'¡Publicada! Ya aparece en el mapa':'Publicada. No encontramos la dirección exacta: revisa la ubicación','check',3500);
+}
+
+/* =========================================================
+   BOTÓN DE PÁNICO
+   ========================================================= */
+function openSOS(){
+  openModal(`<div class="between"><b style="font-size:18px">Botón de pánico</b><button class="iconbtn" onclick="closeModal()" data-icon="close"></button></div>
+    <p class="small muted" style="margin-top:6px">Mantén presionado 3 segundos. Enviaremos tu ubicación GPS a Serenazgo y a tus contactos de emergencia.</p>
+    <div class="sos-ring"><svg viewBox="0 0 170 170"><circle cx="85" cy="85" r="80" fill="none" stroke="#FDE8EE" stroke-width="8"/><circle id="sosArc" cx="85" cy="85" r="80" fill="none" stroke="#E11D48" stroke-width="8" stroke-linecap="round" stroke-dasharray="502.6" stroke-dashoffset="502.6"/></svg><button class="sos-btn pulse" id="sosBtn">SOS</button></div>
+    <div class="row" style="gap:10px"><a class="btn ghost" href="tel:105">${icon('phone',18)}Policía 105</a><a class="btn ghost" href="tel:116">${icon('phone',18)}Bomberos 116</a></div>`);
+  const btn=$('sosBtn'),arc=$('sosArc');let st,raf;
+  const step=t=>{const p=Math.min(1,(t-st)/3000);arc.style.strokeDashoffset=502.6*(1-p);if(p<1)raf=requestAnimationFrame(step);else{navigator.vibrate&&navigator.vibrate([200,100,200]);sosSent()}};
+  btn.addEventListener('pointerdown',e=>{e.preventDefault();st=performance.now();raf=requestAnimationFrame(step)});
+  ['pointerup','pointerleave','pointercancel'].forEach(ev=>btn.addEventListener(ev,()=>{cancelAnimationFrame(raf);arc.style.strokeDashoffset=502.6}));
+  btn.addEventListener('contextmenu',e=>e.preventDefault());
+}
+function sosSent(){
+  const render=(pos,label)=>openModal(`
+    <div style="text-align:center"><div class="avatar pulse" style="width:72px;height:72px;margin:6px auto 14px;background:var(--red);color:#fff">${icon('shield',34)}</div>
+    <b style="font-size:19px">Alerta enviada</b><p class="small muted" style="margin:6px 0 16px">Serenazgo recibió tu ubicación y una unidad fue notificada.</p></div>
+    <div class="card" style="margin-bottom:14px">
+      <div class="checkitem done"><div class="c">${icon('check',12,3)}</div><span class="small">Serenazgo notificado · llegada estimada 6 min</span></div>
+      <div class="checkitem done"><div class="c">${icon('check',12,3)}</div><span class="small">Ubicación GPS compartida en vivo</span></div>
+      <div class="checkitem ${S.contacts.length?'done':''}"><div class="c">${S.contacts.length?icon('check',12,3):''}</div><span class="small">${S.contacts.length?S.contacts.length+' contacto(s) de emergencia avisados':'Sin contactos de emergencia registrados'}</span></div>
+      <div class="divider"></div>
+      <div class="row" style="gap:8px;align-items:flex-start"><span class="muted">${icon('pin',18)}</span><div class="small">${esc(label)}<br><span class="xs muted">${pos[0].toFixed(5)}, ${pos[1].toFixed(5)}</span></div></div>
+    </div>
+    ${S.contacts[0]?`<a class="btn soft" style="margin-bottom:10px" href="https://wa.me/51${S.contacts[0].phone}?text=${encodeURIComponent('🚨 Necesito ayuda. Mi ubicación: https://maps.google.com/?q='+pos[0]+','+pos[1])}" target="_blank" rel="noopener">${icon('phone',18)}Enviar ubicación por WhatsApp</a>`:''}
+    <button class="btn ghost" onclick="closeModal();toast('Alerta cancelada. Nos alegra que estés bien.')">Estoy a salvo · cancelar alerta</button>`);
+  const fallback=()=>{const p=R.me||(S.active?[S.active.spot.lat,S.active.spot.lng]:R.ref||LIMA);render(p,S.active?S.active.spot.addr:'Ubicación aproximada')};
+  if(navigator.geolocation) navigator.geolocation.getCurrentPosition(p=>{R.me=[p.coords.latitude,p.coords.longitude];render(R.me,'Tu ubicación actual (GPS)')},fallback,{timeout:6000,enableHighAccuracy:true}); else fallback();
+}
+
+/* =========================================================
+   INICIO
+   ========================================================= */
+paintIcons();
+history.replaceState({v:'welcome'},'');
+if(S.user){ go(S.mode==='driver'?'map':'host'); }
+window.addEventListener('resize',()=>{ if(R.view==='map'&&map){map.invalidateSize();positionFabs()} });
+</script>
+</body>
+</html>
